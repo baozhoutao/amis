@@ -5,8 +5,10 @@ import {
   highlight,
   FormOptionsControl,
   resolveEventData,
-  insertCustomStyle,
-  getValueByPath
+  CustomStyle,
+  getValueByPath,
+  PopOver,
+  Overlay
 } from 'amis-core';
 import {ActionObject} from 'amis-core';
 import Downshift, {StateChangeOptions} from 'downshift';
@@ -31,7 +33,7 @@ import type {ListenerAction} from 'amis-core';
 
 /**
  * Text 文本输入框。
- * 文档：https://baidu.gitee.io/amis/docs/components/form/text
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/text
  */
 export interface TextControlSchema extends FormOptionsSchema {
   type:
@@ -141,6 +143,8 @@ export interface TextProps extends OptionsControlProps, SpinnerExtraProps {
   inputControlClassName?: string;
   /** 原生input标签的CSS类名 */
   nativeInputClassName?: string;
+
+  popOverContainer?: any;
 }
 
 export interface TextState {
@@ -372,6 +376,13 @@ export default class TextControl extends React.PureComponent<
     }
 
     onBlur && onBlur(e);
+  }
+
+  @autobind
+  close() {
+    this.setState({
+      isFocused: false
+    });
   }
 
   async handleInputChange(evt: React.ChangeEvent<HTMLInputElement>) {
@@ -641,6 +652,11 @@ export default class TextControl extends React.PureComponent<
       : JSON.stringify(value);
   }
 
+  @autobind
+  getTarget() {
+    return this.input?.parentElement;
+  }
+
   renderSugestMode() {
     const {
       className,
@@ -668,7 +684,8 @@ export default class TextControl extends React.PureComponent<
       maxLength,
       minLength,
       translate: __,
-      loadingConfig
+      loadingConfig,
+      popOverContainer
     } = this.props;
     let type = this.props.type?.replace(/^(?:native|input)\-/, '');
 
@@ -812,42 +829,56 @@ export default class TextControl extends React.PureComponent<
                 />
               ) : null}
 
-              {isOpen && filtedOptions.length ? (
-                <div className={cx('TextControl-sugs')}>
-                  {filtedOptions.map((option: any) => {
-                    const label = option[labelField || 'label'];
-                    const value = option[valueField || 'value'];
+              <Overlay
+                container={popOverContainer || this.getTarget}
+                target={this.getTarget}
+                show={!!(isOpen && filtedOptions.length)}
+              >
+                <PopOver
+                  className={cx('TextControl-popover')}
+                  style={{
+                    width: this.input
+                      ? this.input.parentElement!.offsetWidth
+                      : 'auto'
+                  }}
+                >
+                  <div className={cx('TextControl-sugs')}>
+                    {filtedOptions.map((option: any) => {
+                      const label = option[labelField || 'label'];
+                      const value = option[valueField || 'value'];
 
-                    return (
-                      <div
-                        {...getItemProps({
-                          item: value,
-                          disabled: option.disabled,
-                          className: cx(`TextControl-sugItem`, {
-                            'is-highlight': highlightedIndex === indices[value],
-                            'is-disabled': option.disabled
-                          })
-                        })}
-                        key={value}
-                      >
-                        {option.isNew ? (
-                          <span>
-                            {__('Text.add', {label: label})}
-                            <Icon icon="enter" className="icon" />
-                          </span>
-                        ) : (
-                          <span>
-                            {option.disabled
-                              ? label
-                              : highlight(label, inputValue as string)}
-                            {option.tip}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : null}
+                      return (
+                        <div
+                          {...getItemProps({
+                            item: value,
+                            disabled: option.disabled,
+                            className: cx(`TextControl-sugItem`, {
+                              'is-highlight':
+                                highlightedIndex === indices[value],
+                              'is-disabled': option.disabled
+                            })
+                          })}
+                          key={value}
+                        >
+                          {option.isNew ? (
+                            <span>
+                              {__('Text.add', {label: label})}
+                              <Icon icon="enter" className="icon" />
+                            </span>
+                          ) : (
+                            <span>
+                              {option.disabled
+                                ? label
+                                : highlight(label, inputValue as string)}
+                              {option.tip}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </PopOver>
+              </Overlay>
             </div>
           );
         }}
@@ -1040,6 +1071,24 @@ export default class TextControl extends React.PureComponent<
     );
   }
 
+  /**
+   * 处理input的自定义样式
+   */
+  @autobind
+  formatInputThemeCss() {
+    const {themeCss, css} = this.props;
+    const inputFontThemeCss: any = {inputControlClassName: {}};
+    const inputControlClassNameObject =
+      (themeCss || css)?.inputControlClassName || {};
+    for (let key in inputControlClassNameObject) {
+      if (~key.indexOf('font')) {
+        inputFontThemeCss.inputControlClassName[key] =
+          inputControlClassNameObject[key];
+      }
+    }
+    return inputFontThemeCss;
+  }
+
   @supportStatic()
   render(): JSX.Element {
     const {
@@ -1051,45 +1100,76 @@ export default class TextControl extends React.PureComponent<
       inputControlClassName,
       id,
       addOnClassName,
-      editorPath,
-      themeConfig,
+      env,
       classPrefix: ns
     } = this.props;
-    const editorDefaultData = getValueByPath(editorPath, themeConfig);
     let input =
       autoComplete !== false && (source || options?.length || autoComplete)
         ? this.renderSugestMode()
         : this.renderNormal();
 
-    insertCustomStyle(
-      themeCss || css,
-      [
-        {
-          key: 'inputControlClassName',
-          value: inputControlClassName,
-          weights: {
-            active: {
-              pre: `${ns}TextControl.is-focused > .${inputControlClassName}, `
-            }
-          }
-        }
-      ],
-      id,
-      editorDefaultData
-    );
+    return (
+      <>
+        {this.renderBody(input)}
+        <CustomStyle
+          config={{
+            themeCss: themeCss || css,
+            classNames: [
+              {
+                key: 'inputControlClassName',
+                value: inputControlClassName,
+                weights: {
+                  active: {
+                    pre: `${ns}TextControl.is-focused > .${inputControlClassName}, `
+                  }
+                }
+              }
+            ],
+            id: id
+          }}
+          env={env}
+        />
+        <CustomStyle
+          config={{
+            themeCss: this.formatInputThemeCss(),
+            classNames: [
+              {
+                key: 'inputControlClassName',
+                value: inputControlClassName,
+                weights: {
+                  default: {
+                    inner: 'input'
+                  },
+                  hover: {
+                    inner: 'input'
+                  },
+                  active: {
+                    pre: `${ns}TextControl.is-focused > .${inputControlClassName}, `,
+                    inner: 'input'
+                  }
+                }
+              }
+            ],
+            id: id + '-inner'
+          }}
+          env={env}
+        />
 
-    insertCustomStyle(
-      themeCss || css,
-      [
-        {
-          key: 'addOnClassName',
-          value: addOnClassName
-        }
-      ],
-      id + '-addOn'
+        <CustomStyle
+          config={{
+            themeCss: themeCss || css,
+            classNames: [
+              {
+                key: 'addOnClassName',
+                value: addOnClassName
+              }
+            ],
+            id: id + '-addOn'
+          }}
+          env={env}
+        />
+      </>
     );
-
-    return this.renderBody(input);
   }
 }
 

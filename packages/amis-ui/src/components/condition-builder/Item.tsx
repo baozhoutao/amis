@@ -16,7 +16,8 @@ import {
   LocaleProps,
   findTree,
   noop,
-  getVariable
+  getVariable,
+  isMobile
 } from 'amis-core';
 import {Icon} from '../icons';
 
@@ -52,7 +53,7 @@ export interface ConditionItemProps extends ThemeProps, LocaleProps {
   formula?: FormulaPickerProps;
   popOverContainer?: any;
   renderEtrValue?: any;
-  selectMode?: 'list' | 'tree';
+  selectMode?: 'list' | 'tree' | 'chained';
 }
 
 export class ConditionItem extends React.Component<ConditionItemProps> {
@@ -93,8 +94,18 @@ export class ConditionItem extends React.Component<ConditionItemProps> {
 
   @autobind
   handleOperatorChange(op: OperatorType) {
-    const value = {...this.props.value, op: op, right: undefined};
-    this.props.onChange(value, this.props.index);
+    const {fields, value, index, onChange} = this.props;
+    const leftFieldSchema: FieldSimple = findTree(
+      fields,
+      (i: FieldSimple) => i.name === (value?.left as ExpressionField)?.field
+    ) as FieldSimple;
+    const result = {
+      ...value,
+      op: op,
+      right: value.right ?? leftFieldSchema?.defaultValue
+    };
+
+    onChange(result, index);
   }
 
   @autobind
@@ -203,6 +214,7 @@ export class ConditionItem extends React.Component<ConditionItemProps> {
       });
       return (
         <PopOverContainer
+          useMobileUI
           popOverContainer={popOverContainer || (() => findDOMNode(this))}
           popOverRender={({onClose}) => (
             <GroupedSelection
@@ -232,10 +244,13 @@ export class ConditionItem extends React.Component<ConditionItemProps> {
                 onResultClick={onClick}
                 disabled={disabled}
                 placeholder={__('Condition.cond_placeholder')}
+                useMobileUI
               >
-                <span className={cx('CBGroup-operatorCaret')}>
-                  <Icon icon="caret" className="icon" />
-                </span>
+                {!isMobile() ? (
+                  <span className={cx('CBGroup-operatorCaret')}>
+                    <Icon icon="right-arrow-bold" className="icon" />
+                  </span>
+                ) : null}
               </ResultBox>
             </div>
           )}

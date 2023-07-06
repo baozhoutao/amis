@@ -279,6 +279,164 @@ order: 43
 }
 ```
 
+## 多级弹框
+
+```schema: scope="body"
+{
+    "type": "button",
+    "label": "多级弹框",
+    "actionType": "drawer",
+    "drawer": {
+        "title": "提示",
+        "body": "这是个简单的弹框",
+        "actions": [
+            {
+                "type": "button",
+                "actionType": "confirm",
+                "label": "确认",
+                "primary": true
+            },
+            {
+                "type": "button",
+                "actionType": "drawer",
+                "label": "再弹一个",
+                "drawer": {
+                    "title": "弹框中的弹框",
+                    "body": "如果你想，可以无限弹下去",
+                    "actions": [
+                        {
+                            "type": "button",
+                            "actionType": "drawer",
+                            "label": "来吧",
+                            "level": "info",
+                            "drawer": {
+                                "title": "弹框中的弹框",
+                                "body": "如果你想，可以无限弹下去",
+                                "actions": [
+                                    {
+                                        "type": "button",
+                                        "actionType": "confirm",
+                                        "label": "不弹了",
+                                        "primary": true
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+}
+```
+
+## 动作后关闭弹框
+
+在弹框中配置行为按钮，可以在按钮上配置`"close": true`，在行为完成后，关闭当前弹框。
+
+```schema: scope="body"
+{
+    "type": "button",
+    "label": "弹个框",
+    "actionType": "drawer",
+    "drawer": {
+        "title": "弹框",
+        "body": [
+          {
+            "type": "button",
+            "label": "默认的 ajax 请求",
+            "actionType": "ajax",
+            "api": "/api/mock2/form/saveForm?waitSeconds=1"
+          },
+          {
+            "type": "button",
+            "label": "ajax 请求成功后关闭弹框",
+            "actionType": "ajax",
+            "api": "/api/mock2/form/saveForm?waitSeconds=1",
+            "close": true
+          }
+        ]
+    }
+}
+```
+
+以上例子是关闭当前弹窗，如果希望关闭上层弹窗，则需要给目标弹窗设置 `name` 属性，然后配置按钮 `close` 属性为目标 `name` 属性如：
+
+```schema: scope="body"
+{
+    "type": "button",
+    "label": "多级弹框",
+    "actionType": "drawer",
+    "drawer": {
+        "title": "提示",
+        "body": "这是个简单的弹框",
+        "name": "drawer_1",
+        "actions": [
+            {
+                "type": "button",
+                "actionType": "confirm",
+                "label": "确认",
+                "primary": true
+            },
+            {
+                "type": "button",
+                "actionType": "drawer",
+                "label": "再弹一个",
+                "drawer": {
+                    "title": "弹框中的弹框",
+                    "body": "关闭当前弹窗的时候把外层的弹窗一起关了",
+                    "actions": [
+                        {
+                            "type": "button",
+                            "label": "关闭所有",
+                            "level": "info",
+                            "close": "drawer_1"
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+}
+```
+
+## 配置弹窗的按钮
+
+默认弹窗会自动生成两个按钮，一个取消，一个确认。如果通过 `actions` 来自定义配置，则以配置的为准。
+
+```schema: scope="body"
+{
+    "type": "button-toolbar",
+    "buttons": [
+        {
+            "type": "button",
+            "label": "无按钮",
+            "actionType": "dialog",
+            "dialog": {
+                "title": "提示",
+                "actions": [],
+                "body": "无按钮的弹框"
+            }
+        },
+        {
+            "type": "button",
+            "label": "只有一个确认按钮",
+            "actionType": "dialog",
+            "dialog": {
+                "title": "提示",
+                "actions": [{
+                  "type": "button",
+                  "actionType": "confirm",
+                  "label": "OK",
+                  "primary": true
+                }],
+                "body": "只有一个 OK 的弹框"
+            }
+        }
+    ]
+}
+```
+
 ## 属性表
 
 | 属性名          | 类型                                      | 默认值             | 说明                                                                                              |
@@ -304,12 +462,84 @@ order: 43
 
 ## 事件表
 
-当前组件会对外派发以下事件，可以通过`onEvent`来监听这些事件，并通过`actions`来配置执行的动作，在`actions`中可以通过`${事件参数名}`来获取事件产生的数据，详细请查看[事件动作](../../docs/concepts/event-action)。
+当前组件会对外派发以下事件，可以通过`onEvent`来监听这些事件，并通过`actions`来配置执行的动作，在`actions`中可以通过`${事件参数名}`或`${event.data.[事件参数名]}`来获取事件产生的数据，详细请查看[事件动作](../../docs/concepts/event-action)。
 
 | 事件名称 | 事件参数                                                                 | 说明               |
 | -------- | ------------------------------------------------------------------------ | ------------------ |
 | confirm  | `event.data: object` 抽屉数据<br/>`[name]: any` 当前数据域中指定字段的值 | 点击确认提交时触发 |
 | cancel   | `event.data: object` 抽屉数据<br/>`[name]: any` 当前数据域中指定字段的值 | 点击取消时触发     |
+
+### confirm
+
+```schema: scope="body"
+[
+  {
+    "label": "点击弹框",
+    "type": "button",
+    "onEvent": {
+      "click": {
+        "actions": [
+          {
+            "actionType": "drawer",
+            "drawer": {
+              "title": "弹框标题",
+              "body": "这是一个弹框",
+              "onEvent": {
+                "confirm": {
+                    "actions": [
+                    {
+                        "actionType": "toast",
+                        "args": {
+                            "msg": "confirm"
+                        }
+                    }
+                    ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+]
+```
+
+### cancel
+
+```schema: scope="body"
+[
+  {
+    "label": "点击弹框",
+    "type": "button",
+    "onEvent": {
+      "click": {
+        "actions": [
+          {
+            "actionType": "drawer",
+            "drawer": {
+              "title": "弹框标题",
+              "body": "这是一个弹框",
+              "onEvent": {
+                "cancel": {
+                    "actions": [
+                    {
+                        "actionType": "toast",
+                        "args": {
+                            "msg": "cancel"
+                        }
+                    }
+                    ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+]
+```
 
 ## 动作表
 

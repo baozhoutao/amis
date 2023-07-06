@@ -64,7 +64,8 @@ export class MenuItem extends React.Component<MenuItemProps> {
     'attribute',
     'onMouseEnter',
     'onMouseLeave',
-    'onClick'
+    'onClick',
+    'className'
   ];
 
   /** 检查icon参数值是否为文件路径 */
@@ -187,7 +188,6 @@ export class MenuItem extends React.Component<MenuItemProps> {
 
   render() {
     const {
-      className,
       tooltipClassName,
       classnames: cx,
       label,
@@ -225,10 +225,7 @@ export class MenuItem extends React.Component<MenuItemProps> {
           className={cx('Nav-Menu-item-tooltip-wrap')}
           style={isMaxOverflow ? {} : {order}}
         >
-          <RcItem
-            {...pick(this.props, this.internalProps)}
-            className={cx(className)}
-          >
+          <RcItem {...pick(this.props, this.internalProps)}>
             {this.renderMenuItem()}
           </RcItem>
         </ul>

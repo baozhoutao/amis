@@ -42,7 +42,7 @@
 
   @include input-border();
 
-  &:not(.is-disabled) {
+  &:not(.is-disabled):not(.is-mobile) {
     cursor: pointer;
 
     &:hover {
@@ -86,6 +86,11 @@
         color: var(--inputDate-active-color);
       }
     }
+  }
+
+  .is-error > & {
+    border-color: var(--Form-input-onError-borderColor);
+    background: var(--Form-input-onError-bg);
   }
 
   &.is-disabled {
@@ -202,14 +207,15 @@
   }
 }
 
-.#{$ns}DatePicker-popup {
-  height: px2rem(300px);
-}
-
 // 移动端输入框样式
 .#{$ns}DatePicker.is-mobile {
   border: 0;
   justify-content: flex-end;
+
+  &.is-focused,
+  &:hover {
+    border: none;
+  }
 
   span,
   a {
@@ -233,13 +239,10 @@
     flex-grow: unset;
     flex-basis: unset;
   }
-
-  .#{$ns}DatePicker-toggler {
-    margin-top: -3px;
-  }
 }
 
 .#{$ns}DatePicker-popup.#{$ns}DatePicker-mobile {
+  height: px2rem(320px);
   color: red;
   .rdt {
     width: 100%;
@@ -449,7 +452,7 @@
         color: var(--inputTime-active-color);
         background: var(--inputTime-active-bg-color);
       }
-      &:hover {
+      &:not(.is-mobile):hover {
         color: var(--inputTime-hover-color);
         background: var(--inputTime-hover-bg-color);
       }
@@ -459,6 +462,7 @@
 
 .#{$ns}TimeContentWrapper {
   display: flex;
+  justify-content: center;
 }
 
 .#{$ns}TimeRangeHeaderWrapper {
@@ -466,6 +470,7 @@
   padding-top: 10px;
   text-align: center;
   border-bottom: 1px solid var(--Calendar-input-borderColor);
+  margin: 0 px2rem(4px);
 }
 
 .#{$ns}TimeFooterWrapper {

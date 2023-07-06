@@ -24,10 +24,10 @@ import {
   RendererPluginEvent
 } from 'amis-editor-core';
 import {flattenDeep, fromPairs, isObject, remove} from 'lodash';
-import type {ButtonSchema} from 'amis/lib/renderers/Action';
-import type {FormSchema, SchemaObject} from 'amis/lib/Schema';
+import type {ButtonSchema} from 'amis';
+import type {FormSchema, SchemaObject} from 'amis';
 import {findTree} from 'amis';
-import type {CRUD2Schema} from 'amis/lib/renderers/CRUD2';
+import type {CRUD2Schema} from 'amis';
 import {FeatureOption} from '../renderer/FeatureControl';
 import {getArgsWrapper} from '../renderer/event-control/helper';
 
@@ -305,7 +305,7 @@ const FilterTypes: Array<FeatOption> = [
         type: 'form',
         mode: 'inline',
         behavior: 'SimpleQuery',
-        body: builder.resolveSimpleFilterSchema({setting}) || [],
+        body: builder.resolveSimpleFilterSchema({setting, size: 'full'}) || [],
         actions: [
           {
             type: 'submit',
@@ -477,6 +477,7 @@ const DataOperators: Array<FeatOption> = [
 ];
 
 export class CRUDPlugin extends BasePlugin {
+  static id = 'CRUD2Plugin';
   constructor(manager: EditorManager) {
     super(manager);
     this.dsBuilderMgr = new DSBuilderManager('crud2', 'api');
@@ -1304,14 +1305,6 @@ export class CRUDPlugin extends BasePlugin {
       canRebuild: true
     };
   }
-
-  events: RendererPluginEvent[] = [
-    {
-      eventName: 'get-data',
-      eventLabel: '数据加载',
-      description: '列表数据翻页'
-    }
-  ];
 
   actions: RendererPluginAction[] = [
     {

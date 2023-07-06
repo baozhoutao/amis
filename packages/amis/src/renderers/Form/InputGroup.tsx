@@ -9,10 +9,11 @@ import {
   anyChanged
 } from 'amis-core';
 import {FormBaseControlSchema, SchemaCollection} from '../../Schema';
+import {isMobile} from 'amis-core';
 
 /**
  * InputGroup
- * 文档：https://baidu.gitee.io/amis/docs/components/form/input-group
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/input-group
  */
 export interface InputGroupControlSchema extends FormBaseControlSchema {
   type: 'input-group';
@@ -119,6 +120,9 @@ export class InputGroup extends React.Component<
     }
 
     const chidren = formStore?.inputGroupItems?.[name];
+    if (!Array.isArray(chidren)) {
+      return;
+    }
     const errorCollection = chidren
       .map((item, index) => {
         if (item.errors.length <= 0) {
@@ -190,7 +194,8 @@ export class InputGroup extends React.Component<
       data,
       classnames: cx,
       static: isStatic,
-      disabled
+      disabled,
+      useMobileUI
     } = this.props;
     const {errorMode} = this.getValidationConfig();
 
@@ -218,6 +223,8 @@ export class InputGroup extends React.Component<
       (formHorizontal
         ? makeHorizontalDeeper(formHorizontal as any, inputs.length)
         : undefined);
+    const mobileUI = useMobileUI && isMobile();
+
     return (
       <div
         className={cx(
@@ -226,6 +233,9 @@ export class InputGroup extends React.Component<
           className,
           {
             'is-focused': this.state.isFocused
+          },
+          {
+            'is-mobile': mobileUI
           }
         )}
       >

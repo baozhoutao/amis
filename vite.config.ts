@@ -44,10 +44,15 @@ export default defineConfig({
     }
   },
   server: {
+    host: '0.0.0.0',
     port: 8888
   },
   resolve: {
     alias: [
+      {
+        find: 'moment/locale',
+        replacement: 'moment/dist/locale'
+      },
       {
         find: 'amis-formula/lib',
         replacement: path.resolve(__dirname, './packages/amis-formula/src')
@@ -85,8 +90,8 @@ export default defineConfig({
         replacement: path.resolve(__dirname, './packages/amis-editor-core/src')
       },
       {
-        find: 'ooxml-viewer',
-        replacement: path.resolve(__dirname, './packages/ooxml-viewer/src')
+        find: 'office-viewer',
+        replacement: path.resolve(__dirname, './packages/office-viewer/src')
       }
     ]
   }

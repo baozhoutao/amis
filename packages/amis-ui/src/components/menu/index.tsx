@@ -43,7 +43,6 @@ export interface NavigationItem {
   badgeClassName?: string;
   tooltipClassName?: string;
   component?: React.ReactNode;
-  // hidden?: boolean;
   permission?: string;
   persistState?: boolean;
   keepInHistory?: boolean;
@@ -184,6 +183,9 @@ export interface MenuProps extends Omit<RcMenuProps, 'mode'> {
   // (link: any, depth: number) => boolean
   onSelect?: any;
 
+  // (links: any[]) => void
+  onChange?: any;
+
   onToggle: (link: any, depth: number, forceFold?: boolean) => void;
 
   onDragStart?: (
@@ -208,6 +210,11 @@ export interface MenuProps extends Omit<RcMenuProps, 'mode'> {
    * 展开按钮在最前面
    */
   expandBefore?: boolean;
+
+  /**
+   * 浮层自定义样式
+   */
+  popupClassName?: string;
 }
 
 interface MenuState {
@@ -261,7 +268,7 @@ export class Menu extends React.Component<MenuProps, MenuState> {
   constructor(props: MenuProps) {
     super(props);
 
-    const {transformedNav, activeKey, defaultOpenKeys, openKeys} =
+    const {transformedNav, activeKey, defaultOpenKeys, openKeys, activeItems} =
       this.normalizeNavigations({
         ...props
       });
@@ -272,6 +279,9 @@ export class Menu extends React.Component<MenuProps, MenuState> {
       defaultOpenKeys,
       openKeys
     };
+    if (activeKey.length) {
+      props.onChange?.(activeItems);
+    }
   }
 
   componentDidUpdate(prevProps: MenuProps, prevState: MenuState) {
@@ -294,18 +304,27 @@ export class Menu extends React.Component<MenuProps, MenuState> {
       }
     }
     if (isNavDiff || !isEqual(prevProps.location, props.location)) {
-      const {transformedNav, activeKey, defaultOpenKeys, openKeys} =
-        this.normalizeNavigations({
-          ...props,
-          isOpen
-        });
+      const {
+        transformedNav,
+        activeKey,
+        defaultOpenKeys,
+        openKeys,
+        activeItems
+      } = this.normalizeNavigations({
+        ...props,
+        isOpen
+      });
 
       this.setState({
         navigations: transformedNav,
         activeKey,
         defaultOpenKeys,
-        openKeys
+        openKeys,
+        activeItems
       });
+    }
+    if (!isEqual(prevState.activeKey, this.state.activeKey)) {
+      props.onChange?.(this.state.activeItems);
     }
   }
 
@@ -323,6 +342,7 @@ export class Menu extends React.Component<MenuProps, MenuState> {
     let id = 1;
     const activeKeys: Array<string> = [];
     const openKeys: Array<string> = [];
+    const activeItems: Array<any> = [];
 
     const transformedNav = mapTree(
       filterTree(
@@ -346,6 +366,7 @@ export class Menu extends React.Component<MenuProps, MenuState> {
 
         if (!activeKeys.find(key => key === navId) && isActive(item, prefix)) {
           activeKeys?.push(navId);
+          activeItems?.push(item.link || item);
         }
 
         const open = isOpen(item as NavigationItem);
@@ -378,7 +399,8 @@ export class Menu extends React.Component<MenuProps, MenuState> {
       transformedNav,
       activeKey: activeKeys,
       defaultOpenKeys: activeKeyPaths,
-      openKeys
+      openKeys,
+      activeItems
     };
   }
 
@@ -444,8 +466,8 @@ export class Menu extends React.Component<MenuProps, MenuState> {
       mode,
       collapsed,
       accordion,
-      onToggleExpand,
       onToggle,
+      onToggleExpand,
       onSelect
     } = this.props;
     const isVericalInline = stacked && mode === 'inline' && !collapsed;
@@ -464,11 +486,13 @@ export class Menu extends React.Component<MenuProps, MenuState> {
     }
 
     const currentItem = findTree(navigations, item => item.id === key);
-    // 因为Nav里只处理当前菜单项 因此新增一个onToggle事件
-    onToggle?.(currentItem?.link, keyPaths.length, isOpen);
-    onToggleExpand?.(uniq(openKeys));
-
-    onSelect?.(currentItem?.link || currentItem, keyPaths.length);
+    if (currentItem?.path) {
+      onSelect?.(currentItem?.link || currentItem, keyPaths.length);
+    } else {
+      // 因为Nav里只处理当前菜单项 因此新增一个onToggle事件
+      onToggle?.(currentItem?.link, keyPaths.length, isOpen);
+      onToggleExpand?.(uniq(openKeys));
+    }
   }
 
   @autobind
@@ -501,7 +525,7 @@ export class Menu extends React.Component<MenuProps, MenuState> {
       }
       const currentItem = findTree(navigations, item => item.id === eventKey);
       // 因为Nav里只处理当前菜单项 因此新增一个onToggle事件
-      onToggle?.(currentItem?.link, keyPaths.length, isOpen);
+      onToggle?.(currentItem?.link || currentItem, keyPaths.length, isOpen);
       onToggleExpand?.(uniq(openKeys));
     }
   }
@@ -515,6 +539,7 @@ export class Menu extends React.Component<MenuProps, MenuState> {
     [propName: string]: any;
   }) {
     const {classnames: cx, expandIcon} = this.props;
+
     return (
       <span
         key="expand-toggle"
@@ -524,10 +549,13 @@ export class Menu extends React.Component<MenuProps, MenuState> {
           e.preventDefault();
         }}
       >
-        {!expandIcon || !React.isValidElement(expandIcon) ? (
-          <Icon icon="right-arrow-bold" className="icon" />
-        ) : typeof expandIcon === 'string' ? (
-          <i className={cx(expandIcon)} />
+        {!React.isValidElement(expandIcon) ? (
+          <Icon
+            icon={
+              typeof expandIcon === 'string' ? expandIcon : 'right-arrow-bold'
+            }
+            className="icon"
+          />
         ) : (
           expandIcon
         )}
@@ -546,7 +574,8 @@ export class Menu extends React.Component<MenuProps, MenuState> {
       isActive,
       collapsed,
       overflowedIndicator,
-      overflowMaxCount
+      overflowMaxCount,
+      popupClassName
     } = this.props;
 
     return list.map((item: NavigationItem, index: number) => {
@@ -582,6 +611,7 @@ export class Menu extends React.Component<MenuProps, MenuState> {
             badge={badge}
             renderLink={renderLink}
             depth={level || 1}
+            popupClassName={popupClassName}
           >
             {this.renderMenuContent(item.children || [], item.depth + 1)}
           </SubMenu>
@@ -614,7 +644,6 @@ export class Menu extends React.Component<MenuProps, MenuState> {
   render() {
     const {
       classPrefix,
-      className,
       classnames: cx,
       collapsed,
       themeColor,
@@ -624,6 +653,7 @@ export class Menu extends React.Component<MenuProps, MenuState> {
       prefix,
       disabled,
       draggable,
+      className,
       triggerSubMenuAction,
       direction,
       overflowedIndicator,
@@ -641,10 +671,9 @@ export class Menu extends React.Component<MenuProps, MenuState> {
     } = this.props;
     const {navigations, activeKey, defaultOpenKeys, openKeys} = this.state;
     const isDarkTheme = themeColor === 'dark';
-    // const disabledItem = findTree(navigations, item => !!item.disabled);
     const rcMode = stacked
       ? mode === 'float'
-        ? 'vertical-right'
+        ? 'vertical-left'
         : 'vertical'
       : 'horizontal';
     const disableOpen = collapsed || !stacked || (stacked && mode === 'float');

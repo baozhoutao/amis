@@ -27,7 +27,8 @@ import {
   difference,
   immutableExtends,
   extendObject,
-  hasVisibleExpression
+  hasVisibleExpression,
+  sortArray
 } from '../utils/helper';
 import {evalExpression} from '../utils/tpl';
 import {IFormStore} from './form';
@@ -63,11 +64,11 @@ export const Column = types
     className: types.union(types.string, types.frozen())
   })
   .actions(self => ({
-    toggleToggle() {
+    toggleToggle(min = 1) {
       self.toggled = !self.toggled;
       const table = getParent(self, 2) as ITableStore;
 
-      if (!table.activeToggaleColumns.length) {
+      if (table.activeToggaleColumns.length < min) {
         self.toggled = true;
       }
 
@@ -174,12 +175,17 @@ export const Row = types
         children = self.children.map(item => item.locals);
       }
 
+      const table = getParent(self, self.depth * 2) as ITableStore;
       const parent = getParent(self, 2) as ITableStore;
       return createObject(
         extendObject((getParent(self, self.depth * 2) as ITableStore).data, {
           index: self.index,
           // todo 以后再支持多层，目前先一层
-          parent: parent.storeType === Row.name ? parent.data : undefined
+          parent: parent.storeType === Row.name ? parent.data : undefined,
+
+          // 只有table时，也可以获取选中行
+          selectedItems: table.selectedRows.map(item => item.data),
+          unSelectedItems: table.unSelectedRows.map(item => item.data)
         }),
         children
           ? {
@@ -344,6 +350,8 @@ export const TableStore = iRendererStore
     formsRef: types.optional(types.array(types.frozen()), []),
     maxKeepItemSelectionLength: Infinity,
     keepItemSelectionOnPageChange: false,
+    // 导出 Excel 按钮的 loading 状态
+    exportExcelLoading: false,
     searchFormExpanded: false // 用来控制搜索框是否展开了，那个自动根据 searchable 生成的表单 autoGenerateFilter
   })
   .views(self => {
@@ -804,6 +812,9 @@ export const TableStore = iRendererStore
       config.keepItemSelectionOnPageChange !== void 0 &&
         (self.keepItemSelectionOnPageChange =
           config.keepItemSelectionOnPageChange);
+
+      config.exportExcelLoading !== undefined &&
+        (self.exportExcelLoading = config.exportExcelLoading);
 
       if (config.columns && Array.isArray(config.columns)) {
         let columns: Array<SColumn> = config.columns
@@ -1343,6 +1354,19 @@ export const TableStore = iRendererStore
       self.orderDir = key ? direction : '';
     }
 
+    function changeOrder(key: string, direction: 'asc' | 'desc' | '') {
+      setOrderByInfo(key, direction);
+      const dir = /desc/i.test(self.orderDir) ? -1 : 1;
+      self.rows.replace(
+        sortArray(
+          self.rows.concat(),
+          self.orderBy,
+          dir,
+          (item, field) => item.data[field]
+        )
+      );
+    }
+
     function reset() {
       self.rows.forEach(item => item.reset());
       let rows = self.rows.concat();
@@ -1424,10 +1448,11 @@ export const TableStore = iRendererStore
       });
     }
 
-    function toggleAllColumns() {
+    function toggleAllColumns(min: number = 1) {
       if (self.activeToggaleColumns.length) {
         if (self.activeToggaleColumns.length === self.toggableColumns.length) {
           self.toggableColumns.map(column => column.setToggled(false));
+          toggleColumnsAtLeast(min);
         } else {
           self.toggableColumns.map(column => column.setToggled(true));
         }
@@ -1436,6 +1461,14 @@ export const TableStore = iRendererStore
         self.toggableColumns.map(column => column.setToggled(true));
       }
       persistSaveToggledColumns();
+    }
+
+    function toggleColumnsAtLeast(min: number = 1) {
+      if (self.activeToggaleColumns.length < min) {
+        for (let i = 0; i < min; i++) {
+          self.toggableColumns[i]?.setToggled(true);
+        }
+      }
     }
 
     function getPersistDataKey(columns: any[]) {
@@ -1471,12 +1504,14 @@ export const TableStore = iRendererStore
       collapseAllAtDepth,
       clear,
       setOrderByInfo,
+      changeOrder,
       reset,
       toggleDragging,
       stopDragging,
       exchange,
       addForm,
       toggleAllColumns,
+      toggleColumnsAtLeast,
       persistSaveToggledColumns,
       setSearchFormExpanded,
       toggleSearchFormExpanded,

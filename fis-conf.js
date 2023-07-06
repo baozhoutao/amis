@@ -85,9 +85,9 @@ fis.match('/mock/**', {
   useCompile: false
 });
 
-fis.match('mod.js', {
-  useCompile: false
-});
+// fis.match('mod.js', {
+//   useCompile: false
+// });
 
 fis.match('*.scss', {
   parser: fis.plugin('sass', {
@@ -214,6 +214,9 @@ fis.match('{*.ts,*.jsx,*.tsx,/examples/**.js,/src/**.js,/src/**.ts}', {
   isMod: true,
   rExt: '.js'
 });
+fis.match('/examples/mod.js', {
+  isMod: false
+});
 
 fis.match('markdown-it/**', {
   preprocessor: fis.plugin('js-require-file')
@@ -227,7 +230,7 @@ fis.match('*.html:jsx', {
 
 // 这些用了 esm
 fis.match(
-  '{echarts/extension/**.js,zrender/**.js,markdown-it-html5-media/**.js,react-hook-form/**.js,qrcode.react/**.js,axios/**.js}',
+  '{echarts/**.js,zrender/**.js,echarts-wordcloud/**.js,markdown-it-html5-media/**.js,react-hook-form/**.js,qrcode.react/**.js,axios/**.js}',
   {
     parser: fis.plugin('typescript', {
       sourceMap: false,
@@ -464,8 +467,10 @@ if (fis.project.currentMedia() === 'publish-sdk') {
         '!zrender/**',
         '!echarts/**',
         '!echarts-stat/**',
+        '!echarts-wordcloud/**',
         '!papaparse/**',
         '!exceljs/**',
+        '!xlsx/**',
         '!docsearch.js/**',
         '!monaco-editor/**.css',
         '!amis-ui/lib/components/RichText.js',
@@ -490,7 +495,7 @@ if (fis.project.currentMedia() === 'publish-sdk') {
         '!markdown-it/**',
         '!markdown-it-html5-media/**',
         '!punycode/**',
-        '!ooxml-viewer/**',
+        '!office-viewer/**',
         '!fflate/**'
       ],
 
@@ -505,6 +510,8 @@ if (fis.project.currentMedia() === 'publish-sdk') {
       'papaparse.js': ['papaparse/**'],
 
       'exceljs.js': ['exceljs/**'],
+
+      'xlsx.js': ['xlsx/**'],
 
       'markdown.js': [
         'amis-ui/lib/components/Markdown.js',
@@ -530,9 +537,14 @@ if (fis.project.currentMedia() === 'publish-sdk') {
 
       'barcode.js': ['src/components/BarCode.tsx', 'jsbarcode/**'],
 
-      'charts.js': ['zrender/**', 'echarts/**', 'echarts-stat/**'],
+      'charts.js': [
+        'zrender/**',
+        'echarts/**',
+        'echarts-stat/**',
+        'echarts-wordcloud/**'
+      ],
 
-      'ooxml-viewer.js': ['ooxml-viewer/**', 'fflate/**'],
+      'office-viewer.js': ['office-viewer/**', 'fflate/**'],
 
       'rest.js': [
         '*.js',
@@ -545,8 +557,10 @@ if (fis.project.currentMedia() === 'publish-sdk') {
         '!amis-ui/lib/components/RichText.js',
         '!zrender/**',
         '!echarts/**',
+        '!echarts-wordcloud/**',
         '!papaparse/**',
         '!exceljs/**',
+        '!xlsx/**',
         '!highlight.js/**',
         '!argparse/**',
         '!entities/**',
@@ -555,7 +569,7 @@ if (fis.project.currentMedia() === 'publish-sdk') {
         '!uc.micro/**',
         '!markdown-it/**',
         '!markdown-it-html5-media/**',
-        '!ooxml-viewer/**',
+        '!office-viewer/**',
         '!fflate/**'
       ]
     }),
@@ -756,8 +770,10 @@ if (fis.project.currentMedia() === 'publish-sdk') {
         '!zrender/**',
         '!echarts/**',
         '!echarts-stat/**',
+        '!echarts-wordcloud/**',
         '!papaparse/**',
         '!exceljs/**',
+        '!xlsx/**',
         '!docsearch.js/**',
         '!monaco-editor/**.css',
         '!src/components/RichText.tsx',
@@ -784,7 +800,7 @@ if (fis.project.currentMedia() === 'publish-sdk') {
         '!punycode/**',
         '!amis-formula/**',
         '!fflate/**',
-        '!ooxml-viewer/**',
+        '!office-viewer/**',
         '!amis-core/**',
         '!amis-ui/**',
         '!amis/**'
@@ -802,6 +818,8 @@ if (fis.project.currentMedia() === 'publish-sdk') {
       'pkg/papaparse.js': ['papaparse/**'],
 
       'pkg/exceljs.js': ['exceljs/**'],
+
+      'pkg/xlsx.js': ['xlsx/**'],
 
       'pkg/barcode.js': ['amis-ui/lib/components/BarCode.tsx', 'jsbarcode/**'],
 
@@ -828,7 +846,12 @@ if (fis.project.currentMedia() === 'publish-sdk') {
 
       'pkg/cropperjs.js': ['cropperjs/**', 'react-cropper/**'],
 
-      'pkg/charts.js': ['zrender/**', 'echarts/**', 'echarts-stat/**'],
+      'pkg/charts.js': [
+        'zrender/**',
+        'echarts/**',
+        'echarts-stat/**',
+        'echarts-wordcloud/**'
+      ],
 
       'pkg/api-mock.js': ['mock/*.ts'],
 
@@ -843,7 +866,7 @@ if (fis.project.currentMedia() === 'publish-sdk') {
         '!/examples/components/EChartsEditor/Common.tsx'
       ],
 
-      'pkg/ooxml-viewer.js': ['ooxml-viewer/**', 'fflate/**'],
+      'pkg/office-viewer.js': ['office-viewer/**', 'fflate/**'],
 
       'pkg/rest.js': [
         '**.{js,jsx,ts,tsx}',
@@ -855,8 +878,10 @@ if (fis.project.currentMedia() === 'publish-sdk') {
         '!amis-ui/lib/components/RichText.tsx',
         '!zrender/**',
         '!echarts/**',
+        '!echarts-wordcloud/**',
         '!papaparse/**',
         '!exceljs/**',
+        '!xlsx/**',
         '!amis-core/lib/utils/markdown.ts',
         '!highlight.js/**',
         '!argparse/**',

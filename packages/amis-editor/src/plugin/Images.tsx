@@ -4,6 +4,7 @@ import {defaultValue, getSchemaTpl, tipedLabel} from 'amis-editor-core';
 import {mockValue} from 'amis-editor-core';
 
 export class ImagesPlugin extends BasePlugin {
+  static id = 'ImagesPlugin';
   static scene = ['layout'];
   // 关联渲染器名字
   rendererName = 'images';
@@ -17,7 +18,8 @@ export class ImagesPlugin extends BasePlugin {
   icon = 'fa fa-clone';
   pluginIcon = 'images-plugin';
   scaffold = {
-    type: 'images'
+    type: 'images',
+    imageGallaryClassName: 'app-popover'
   };
   previewSchema = {
     ...this.scaffold,
@@ -84,14 +86,13 @@ export class ImagesPlugin extends BasePlugin {
                       }
                     }
                   },
-                  {
-                    name: 'source',
-                    type: 'input-text',
-                    label: '关联数据',
-                    description:
-                      '比如：\\${listVar}，用来关联作用域中的已有数据。',
+                  getSchemaTpl('sourceBindControl', {
+                    label: tipedLabel(
+                      '关联数据',
+                      '比如：\\${listVar}，用来关联作用域中的已有数据'
+                    ),
                     visibleOn: 'this.__mode == 1'
-                  },
+                  }),
                   {
                     type: 'combo',
                     name: 'options',

@@ -80,3 +80,35 @@ export function formatStyleObject(style: string | null, px2number = true) {
 
   return res;
 }
+
+/**
+ * This function searches for the every react-aria SSR ids in a given HTMLElement node and replace every attribute values with a static id
+ *
+ * This can be usefull when you're trying to generate a snapshot of components using react-aria under the hood
+ *
+ * @ex :
+ * ```
+ * const { container } = render(<Component />);
+ *
+ * replaceReactAriaIds(container);
+ * ```
+ *
+ * @param container The HTMLElement node to search for SSR ids
+ */
+export function replaceReactAriaIds(container: HTMLElement) {
+  const selectors = ['aria-labelledby'];
+  const ariaSelector = (el: string) => `[${el}]`;
+  const regexp = /downshift\-\d+-label/g;
+
+  container
+    .querySelectorAll(selectors.map(ariaSelector).join(', '))
+    .forEach(el => {
+      selectors.forEach(selector => {
+        const attr = el.getAttribute(selector);
+
+        if (attr?.match(regexp)) {
+          el.removeAttribute(selector);
+        }
+      });
+    });
+}

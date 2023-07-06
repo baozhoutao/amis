@@ -5,7 +5,7 @@ import {
   FormControlProps,
   FormBaseControl,
   resolveEventData,
-  insertCustomStyle
+  CustomStyle
 } from 'amis-core';
 import cx from 'classnames';
 import {NumberInput, Select} from 'amis-ui';
@@ -23,7 +23,7 @@ import {supportStatic} from './StaticHoc';
 
 /**
  * 数字输入框
- * 文档：https://baidu.gitee.io/amis/docs/components/form/number
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/number
  */
 export interface NumberControlSchema extends FormBaseControlSchema {
   type: 'input-number';
@@ -386,18 +386,23 @@ export default class NumberControl extends React.Component<
       css,
       themeCss,
       inputControlClassName,
-      id
+      id,
+      env
     } = this.props;
     const finalPrecision = this.filterNum(precision);
     const unit = this.state?.unit;
     // 数据格式化
-    const formatter = (value: string | number) => {
-      // 增加千分分隔
-      if (kilobitSeparator && value) {
-        value = numberFormatter.format(value as number);
-      }
-      return (prefix ? prefix : '') + value + (suffix ? suffix : '');
-    };
+    const formatter =
+      kilobitSeparator || prefix || suffix
+        ? (value: string | number) => {
+            // 增加千分分隔
+            if (kilobitSeparator && value) {
+              value = numberFormatter.format(value as number);
+            }
+
+            return (prefix ? prefix : '') + value + (suffix ? suffix : '');
+          }
+        : undefined;
     // 将数字还原
     const parser = (value: string) => {
       if (value) {
@@ -412,22 +417,6 @@ export default class NumberControl extends React.Component<
       unit && value && typeof value === 'string'
         ? value.replace(unit, '')
         : value;
-
-    insertCustomStyle(
-      themeCss || css,
-      [
-        {
-          key: 'inputControlClassName',
-          value: inputControlClassName,
-          weights: {
-            active: {
-              pre: `${inputControlClassName}.focused, `
-            }
-          }
-        }
-      ],
-      id
-    );
 
     return (
       <div
@@ -463,7 +452,7 @@ export default class NumberControl extends React.Component<
           big={big}
           clearValueOnEmpty={clearValueOnEmpty}
         />
-        {unitOptions ? (
+        {Array.isArray(unitOptions) && unitOptions.length !== 0 ? (
           unitOptions.length > 1 ? (
             <Select
               value={unit}
@@ -486,6 +475,24 @@ export default class NumberControl extends React.Component<
             </div>
           )
         ) : null}
+        <CustomStyle
+          config={{
+            themeCss: themeCss || css,
+            classNames: [
+              {
+                key: 'inputControlClassName',
+                value: inputControlClassName,
+                weights: {
+                  active: {
+                    pre: `${inputControlClassName}.focused, `
+                  }
+                }
+              }
+            ],
+            id
+          }}
+          env={env}
+        />
       </div>
     );
   }

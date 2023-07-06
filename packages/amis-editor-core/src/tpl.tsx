@@ -1,4 +1,4 @@
-import type {SchemaObject} from 'amis/lib/Schema';
+import type {SchemaObject} from 'amis';
 
 /**
  * @file amis schema 配置模板，主要很多地方都要全部配置的化，
@@ -11,13 +11,13 @@ const tpls: {
 export function getSchemaTpl(
   name: string,
   patch?: object,
-  rendererSchema?: any
+  options?: object
 ): any {
   const tpl = tpls[name] || {};
   let schema = null;
 
   if (typeof tpl === 'function') {
-    schema = tpl(patch, rendererSchema);
+    schema = tpl(patch, options);
   } else {
     schema = patch
       ? {

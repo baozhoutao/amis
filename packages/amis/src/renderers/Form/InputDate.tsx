@@ -8,12 +8,13 @@ import {
 import cx from 'classnames';
 import {filterDate, isPureVariable, resolveVariableAndFilter} from 'amis-core';
 import moment from 'moment';
-import 'moment/locale/zh-cn';
 import {DatePicker} from 'amis-ui';
 import {FormBaseControlSchema, SchemaObject} from '../../Schema';
 import {createObject, anyChanged, isMobile, autobind} from 'amis-core';
 import {ActionObject} from 'amis-core';
 import {supportStatic} from './StaticHoc';
+
+import type {ShortCuts} from 'amis-ui/lib/components/DatePicker';
 
 export interface InputDateBaseControlSchema extends FormBaseControlSchema {
   /**
@@ -56,11 +57,16 @@ export interface InputDateBaseControlSchema extends FormBaseControlSchema {
    * 边框模式，全边框，还是半边框，或者没边框。
    */
   borderMode?: 'full' | 'half' | 'none';
+
+  /**
+   * 日期快捷键
+   */
+  shortcuts?: string | ShortCuts[];
 }
 
 /**
  * Date日期选择控件
- * 文档：https://baidu.gitee.io/amis/docs/components/form/date
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/date
  */
 export interface DateControlSchema extends InputDateBaseControlSchema {
   /**
@@ -98,7 +104,7 @@ export interface DateControlSchema extends InputDateBaseControlSchema {
 
 /**
  * Datetime日期时间选择控件
- * 文档：https://baidu.gitee.io/amis/docs/components/form/datetime
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/datetime
  */
 export interface DateTimeControlSchema extends InputDateBaseControlSchema {
   /**
@@ -139,11 +145,16 @@ export interface DateTimeControlSchema extends InputDateBaseControlSchema {
    * 时间输入范围限制
    */
   timeConstraints?: any;
+
+  /**
+   * 是否为结束时间，如果是，那么会自动加上 23:59:59
+   */
+  isEndDate?: boolean;
 }
 
 /**
  * Time 时间选择控件
- * 文档：https://baidu.gitee.io/amis/docs/components/form/time
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/time
  */
 export interface TimeControlSchema extends InputDateBaseControlSchema {
   /**
@@ -178,7 +189,7 @@ export interface TimeControlSchema extends InputDateBaseControlSchema {
 
 /**
  * Month 月份选择控件
- * 文档：https://baidu.gitee.io/amis/docs/components/form/Month
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/Month
  */
 export interface MonthControlSchema extends InputDateBaseControlSchema {
   /**
@@ -502,6 +513,7 @@ export default class DateControl extends React.PureComponent<
       >
         <DatePicker
           {...rest}
+          env={env}
           placeholder={placeholder ?? this.placeholder}
           useMobileUI={useMobileUI}
           popOverContainer={
@@ -514,6 +526,8 @@ export default class DateControl extends React.PureComponent<
           timeFormat={timeFormat}
           format={valueFormat || format}
           {...this.state}
+          minDateRaw={this.props.minDate}
+          maxDateRaw={this.props.maxDate}
           classnames={cx}
           onRef={this.getRef}
           schedules={this.state.schedules}

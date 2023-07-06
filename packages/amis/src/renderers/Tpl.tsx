@@ -1,6 +1,6 @@
 import React from 'react';
 import {autobind, createObject, Renderer, RendererProps} from 'amis-core';
-import {filter} from 'amis-core';
+import {filter, asyncFilter} from 'amis-core';
 import cx from 'classnames';
 import {anyChanged, getPropValue} from 'amis-core';
 import {escapeHtml} from 'amis-core';
@@ -15,7 +15,7 @@ export interface TplSchema extends BaseSchema {
   /**
    * 指定为模板渲染器。
    *
-   * 文档：https://baidu.gitee.io/amis/docs/concepts/template
+   * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/docs/concepts/template
    */
   type: 'tpl' | 'html';
 
@@ -52,18 +52,52 @@ export interface TplProps extends RendererProps, TplSchema {
   value?: string;
 }
 
-export class Tpl extends React.Component<TplProps, object> {
+interface TplState {
+  content: string;
+}
+
+export class Tpl extends React.Component<TplProps, TplState> {
   static defaultProps: Partial<TplProps> = {
     inline: true,
     placeholder: ''
   };
 
   dom: any;
+  mounted: boolean;
 
   constructor(props: TplProps) {
     super(props);
+    this.state = {
+      content: this.getContent()
+    };
+    this.mounted = true;
   }
 
+  componentDidUpdate(prevProps: Readonly<TplProps>): void {
+    const checkProps = ['tpl', 'html', 'text', 'raw', 'data', 'placeholder'];
+    if (
+      checkProps.some(key => prevProps[key] !== this.props[key]) ||
+      getPropValue(prevProps) !== getPropValue(this.props)
+    ) {
+      this.updateContent();
+    }
+  }
+
+  componentDidMount() {
+    this.updateContent();
+  }
+
+  componentWillUnmount() {
+    this.mounted = false;
+  }
+
+  @autobind
+  async updateContent() {
+    const content = await this.getAsyncContent();
+    this.mounted && this.setState({content});
+  }
+
+  @autobind
   getContent() {
     const {tpl, html, text, raw, data, placeholder} = this.props;
     const value = getPropValue(this.props);
@@ -85,10 +119,33 @@ export class Tpl extends React.Component<TplProps, object> {
     }
   }
 
+  @autobind
+  async getAsyncContent() {
+    const {tpl, html, text, data, raw, placeholder} = this.props;
+    const value = getPropValue(this.props);
+
+    if (raw) {
+      return raw;
+    } else if (html) {
+      return asyncFilter(html, data);
+    } else if (tpl) {
+      return asyncFilter(tpl, data);
+    } else if (text) {
+      return escapeHtml(await asyncFilter(text, data));
+    } else {
+      return value == null || value === ''
+        ? `<span class="text-muted">${placeholder}</span>`
+        : typeof value === 'string'
+        ? value
+        : JSON.stringify(value);
+    }
+  }
+
   /**
    * 过滤掉HTML标签, 仅提取文本内容, 用于HTML标签的title属性
    */
-  getTitle(content: string): string {
+  @autobind
+  getTitle(content: string) {
     const {showNativeTitle} = this.props;
 
     if (!showNativeTitle) {
@@ -96,10 +153,7 @@ export class Tpl extends React.Component<TplProps, object> {
     }
 
     let title = typeof content === 'string' ? content : '';
-    const tempDom = new DOMParser().parseFromString(
-      this.getContent(),
-      'text/html'
-    );
+    const tempDom = new DOMParser().parseFromString(content, 'text/html');
 
     if (tempDom?.body?.textContent) {
       title = tempDom.body.textContent;
@@ -111,34 +165,19 @@ export class Tpl extends React.Component<TplProps, object> {
   @autobind
   handleClick(e: React.MouseEvent<HTMLDivElement>) {
     const {dispatchEvent, data} = this.props;
-    dispatchEvent(
-      'click',
-      createObject(data, {
-        nativeEvent: e
-      })
-    );
+    dispatchEvent(e, data);
   }
 
   @autobind
   handleMouseEnter(e: React.MouseEvent<any>) {
     const {dispatchEvent, data} = this.props;
-    dispatchEvent(
-      e,
-      createObject(data, {
-        nativeEvent: e
-      })
-    );
+    dispatchEvent(e, data);
   }
 
   @autobind
   handleMouseLeave(e: React.MouseEvent<any>) {
     const {dispatchEvent, data} = this.props;
-    dispatchEvent(
-      e,
-      createObject(data, {
-        nativeEvent: e
-      })
-    );
+    dispatchEvent(e, data);
   }
 
   render() {
@@ -153,7 +192,7 @@ export class Tpl extends React.Component<TplProps, object> {
       env
     } = this.props;
     const Component = wrapperComponent || (inline ? 'span' : 'div');
-    const content = this.getContent();
+    const {content} = this.state;
 
     return (
       <Component

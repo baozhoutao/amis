@@ -1,20 +1,12 @@
-import {relativeValueRe} from 'amis';
 import {RendererPluginAction, RendererPluginEvent} from 'amis-editor-core';
-import {availableLanguages} from 'amis/lib/renderers/Form/Editor';
-import {defaultValue, getSchemaTpl, valuePipeOut} from 'amis-editor-core';
+import {getSchemaTpl} from 'amis-editor-core';
 import {registerEditorPlugin} from 'amis-editor-core';
-import {
-  BasePlugin,
-  BasicSubRenderInfo,
-  RendererEventContext,
-  SubRendererInfo,
-  BaseEventContext,
-  tipedLabel
-} from 'amis-editor-core';
+import {BasePlugin, BaseEventContext, tipedLabel} from 'amis-editor-core';
 import {ValidatorTag} from '../../validator';
 import {getEventControlConfig} from '../../renderer/event-control/helper';
 
 export class NestedSelectControlPlugin extends BasePlugin {
+  static id = 'NestedSelectControlPlugin';
   // 关联渲染器名字
   rendererName = 'nested-select';
   $schema = '/schemas/NestedSelectControlSchema.json';
@@ -129,9 +121,15 @@ export class NestedSelectControlPlugin extends BasePlugin {
         {
           type: 'object',
           properties: {
-            'event.data.value': {
-              type: 'string',
-              title: '选中值'
+            data: {
+              type: 'object',
+              title: '数据',
+              properties: {
+                value: {
+                  type: 'string',
+                  title: '选中的值'
+                }
+              }
             }
           }
         }
@@ -145,9 +143,15 @@ export class NestedSelectControlPlugin extends BasePlugin {
         {
           type: 'object',
           properties: {
-            'event.data.value': {
-              type: 'string',
-              title: '选中值'
+            data: {
+              type: 'object',
+              title: '数据',
+              properties: {
+                value: {
+                  type: 'string',
+                  title: '选中的值'
+                }
+              }
             }
           }
         }
@@ -161,9 +165,15 @@ export class NestedSelectControlPlugin extends BasePlugin {
         {
           type: 'object',
           properties: {
-            'event.data.value': {
-              type: 'string',
-              title: '选中值'
+            data: {
+              type: 'object',
+              title: '数据',
+              properties: {
+                value: {
+                  type: 'string',
+                  title: '选中的值'
+                }
+              }
             }
           }
         }

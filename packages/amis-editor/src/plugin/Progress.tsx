@@ -6,6 +6,7 @@ import {ValidatorTag} from '../validator';
 import {getEventControlConfig} from '../renderer/event-control/helper';
 
 export class ProgressPlugin extends BasePlugin {
+  static id = 'ProgressPlugin';
   static scene = ['layout'];
   // 关联渲染器名字
   rendererName = 'progress';
@@ -22,6 +23,7 @@ export class ProgressPlugin extends BasePlugin {
   pluginIcon = 'progress-plugin';
   scaffold = {
     type: 'progress',
+    mode: 'line',
     value: 66,
     strokeWidth: 6,
     valueTpl: '${value}%'
@@ -217,7 +219,7 @@ export class ProgressPlugin extends BasePlugin {
               }),
               {
                 type: 'button-group-select',
-                name: 'style',
+                name: 'styleType',
                 label: '样式',
                 visibleOn: 'data.mode === "line"',
                 options: [

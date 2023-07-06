@@ -3,7 +3,7 @@ import hotkeys from 'hotkeys-js';
 import {
   ActionObject,
   extendObject,
-  insertCustomStyle,
+  CustomStyle,
   IScopedContext,
   isObject,
   Renderer,
@@ -232,7 +232,7 @@ export interface DialogActionSchema extends ButtonSchema {
 
   /**
    * 弹框详情
-   * 文档：https://baidu.gitee.io/amis/docs/components/dialog
+   * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/dialog
    */
   dialog: DialogSchemaBase;
 
@@ -252,7 +252,7 @@ export interface DrawerActionSchema extends ButtonSchema {
 
   /**
    * 抽出式弹框详情
-   * 文档：https://baidu.gitee.io/amis/docs/components/drawer
+   * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/drawer
    */
   drawer: DrawerSchemaBase;
 
@@ -272,7 +272,7 @@ export interface ToastActionSchema extends ButtonSchema {
 
   /**
    * 轻提示详情
-   * 文档：https://baidu.gitee.io/amis/docs/components/toast
+   * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/toast
    */
   toast: ToastSchemaBase;
 }
@@ -365,7 +365,7 @@ export interface VanillaAction extends ButtonSchema {
 
 /**
  * 按钮动作渲染器。
- * 文档：https://baidu.gitee.io/amis/docs/components/action
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/action
  */
 export type ActionSchema =
   | AjaxActionSchema
@@ -388,6 +388,7 @@ const ActionProps = [
   'url',
   'link',
   'confirmText',
+  'confirmTitle',
   'tooltip',
   'disabledTip',
   'className',
@@ -793,24 +794,9 @@ export class Action extends React.Component<ActionProps, ActionState> {
       loadingConfig,
       themeCss,
       css,
-      id
+      id,
+      env
     } = this.props;
-    insertCustomStyle(
-      themeCss || css,
-      [
-        {
-          key: 'className',
-          value: className,
-          weights: {
-            hover: {
-              suf: ':not(:disabled):not(.is-disabled)'
-            },
-            active: {suf: ':not(:disabled):not(.is-disabled)'}
-          }
-        }
-      ],
-      id
-    );
 
     if (actionType !== 'email' && body) {
       return (
@@ -862,40 +848,89 @@ export class Action extends React.Component<ActionProps, ActionState> {
     );
 
     return (
-      <Button
-        loadingConfig={loadingConfig}
-        className={cx(className, {
-          [activeClassName || 'is-active']: isActive
-        })}
-        style={style}
-        size={size}
-        level={
-          activeLevel && isActive
-            ? activeLevel
-            : level || (primary ? 'primary' : undefined)
-        }
-        loadingClassName={loadingClassName}
-        loading={loading}
-        onClick={this.handleAction}
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
-        type={type && ~allowedType.indexOf(type) ? type : 'button'}
-        disabled={disabled}
-        componentClass={isMenuItem ? 'a' : componentClass}
-        overrideClassName={isMenuItem}
-        tooltip={filterContents(tooltip, data)}
-        disabledTip={filterContents(disabledTip, data)}
-        tooltipPlacement={tooltipPlacement}
-        tooltipContainer={tooltipContainer}
-        tooltipTrigger={tooltipTrigger}
-        tooltipRootClose={tooltipRootClose}
-        block={block}
-        iconOnly={!!(icon && !label && level !== 'link')}
-      >
-        {!loading ? iconElement : ''}
-        {label ? <span>{filter(String(label), data)}</span> : null}
-        {rightIconElement}
-      </Button>
+      <>
+        <Button
+          loadingConfig={loadingConfig}
+          className={cx(className, {
+            [activeClassName || 'is-active']: isActive
+          })}
+          style={style}
+          size={size}
+          level={
+            activeLevel && isActive
+              ? activeLevel
+              : filter(level, data) || (primary ? 'primary' : undefined)
+          }
+          loadingClassName={loadingClassName}
+          loading={loading}
+          onClick={this.handleAction}
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+          type={type && ~allowedType.indexOf(type) ? type : 'button'}
+          disabled={disabled}
+          componentClass={isMenuItem ? 'a' : componentClass}
+          overrideClassName={isMenuItem}
+          tooltip={filterContents(tooltip, data)}
+          disabledTip={filterContents(disabledTip, data)}
+          tooltipPlacement={tooltipPlacement}
+          tooltipContainer={tooltipContainer}
+          tooltipTrigger={tooltipTrigger}
+          tooltipRootClose={tooltipRootClose}
+          block={block}
+          iconOnly={!!(icon && !label && level !== 'link')}
+        >
+          {!loading ? iconElement : ''}
+          {label ? <span>{filter(String(label), data)}</span> : null}
+          {rightIconElement}
+        </Button>
+        {/* button自定义样式 */}
+        <CustomStyle
+          config={{
+            themeCss: themeCss || css,
+            classNames: [
+              {
+                key: 'className',
+                value: className,
+                weights: {
+                  hover: {
+                    suf: ':not(:disabled):not(.is-disabled)'
+                  },
+                  active: {suf: ':not(:disabled):not(.is-disabled)'}
+                }
+              }
+            ],
+            id
+          }}
+          env={env}
+        />
+        {/* button图标自定义样式 */}
+        <CustomStyle
+          config={{
+            themeCss: themeCss || css,
+            classNames: [
+              {
+                key: 'iconClassName',
+                value: iconClassName,
+                weights: {
+                  default: {
+                    important: true
+                  },
+                  hover: {
+                    important: true,
+                    suf: ':not(:disabled):not(.is-disabled)'
+                  },
+                  active: {
+                    important: true,
+                    suf: ':not(:disabled):not(.is-disabled)'
+                  }
+                }
+              }
+            ],
+            id
+          }}
+          env={env}
+        />
+      </>
     );
   }
 }
@@ -957,10 +992,7 @@ export class ActionRenderer extends React.Component<ActionRendererProps> {
     let mergedData = data;
 
     if (action?.actionType === 'click' && isObject(action?.args)) {
-      mergedData = createObject(data, {
-        ...action.args,
-        nativeEvent: e
-      });
+      mergedData = createObject(data, action.args);
     }
 
     const hasOnEvent = $schema.onEvent && Object.keys($schema.onEvent).length;
@@ -972,12 +1004,16 @@ export class ActionRenderer extends React.Component<ActionRendererProps> {
       env.confirm &&
       (confirmText = filter(action.confirmText, mergedData))
     ) {
-      let confirmed = await env.confirm(confirmText);
+      let confirmed = await env.confirm(
+        confirmText,
+        filter(action.confirmTitle, mergedData) || undefined
+      );
       if (confirmed) {
         // 触发渲染器事件
         const rendererEvent = await dispatchEvent(
           e as React.MouseEvent<any> | string,
-          mergedData
+          mergedData,
+          this // 保证renderer可以拿到，避免因交互设计导致的清空情况，例如crud内itemAction
         );
 
         // 阻止原有动作执行

@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import {Renderer, RendererProps} from 'amis-core';
+import {Renderer, RendererProps, filterTarget} from 'amis-core';
 import {observer} from 'mobx-react';
 import {ServiceStore, IServiceStore} from 'amis-core';
 import {
@@ -34,7 +34,7 @@ import {
   SchemaMessage
 } from '../Schema';
 import {SchemaRemark} from './Remark';
-import {onAction} from 'mobx-state-tree';
+import {isAlive, onAction} from 'mobx-state-tree';
 import mapValues from 'lodash/mapValues';
 import {resolveVariable} from 'amis-core';
 import {buildStyle} from 'amis-core';
@@ -51,7 +51,7 @@ interface CSSRule {
 }
 
 /**
- * amis Page 渲染器。详情请见：https://baidu.gitee.io/amis/docs/components/page
+ * amis Page 渲染器。详情请见：https://aisuda.bce.baidu.com/amis/zh-CN/components/page
  */
 export interface PageSchema extends BaseSchema, SpinnerExtraProps {
   /**
@@ -406,10 +406,10 @@ export default class Page extends React.Component<PageProps> {
 
     // Page加载完成时触发 pageLoaded 事件
     if (env?.tracker) {
-      env.tracker({eventType: 'pageLoaded'});
+      env.tracker({eventType: 'pageLoaded'}, this.props);
     }
 
-    if (rendererEvent?.prevented) {
+    if (rendererEvent?.prevented || !isAlive(store)) {
       return;
     }
 
@@ -484,7 +484,7 @@ export default class Page extends React.Component<PageProps> {
 
     if (action.actionType === 'dialog') {
       store.setCurrentAction(action);
-      store.openDialog(ctx, undefined, undefined, delegate);
+      store.openDialog(ctx, undefined, action.callback, delegate);
     } else if (action.actionType === 'drawer') {
       store.setCurrentAction(action);
       store.openDrawer(ctx, undefined, undefined, delegate);
@@ -513,7 +513,10 @@ export default class Page extends React.Component<PageProps> {
             action.redirect && filter(action.redirect, store.data);
           redirect && env.jumpTo(redirect, action);
           action.reload &&
-            this.reloadTarget(filter(action.reload, store.data), store.data);
+            this.reloadTarget(
+              filterTarget(action.reload, store.data),
+              store.data
+            );
         })
         .catch(e => {
           if (throwErrors || action.countDown) {
@@ -525,8 +528,31 @@ export default class Page extends React.Component<PageProps> {
     }
   }
 
-  handleQuery(query: any) {
-    this.receive(query);
+  handleQuery(query: any): any {
+    if (this.props.initApi) {
+      // 如果是分页动作，则看接口里面有没有用，没用则  return false
+      // 让组件自己去排序
+      if (
+        query?.hasOwnProperty('orderBy') &&
+        !isApiOutdated(
+          this.props.initApi,
+          this.props.initApi,
+          this.props.store.data,
+          createObject(this.props.store.data, query)
+        )
+      ) {
+        return false;
+      }
+
+      this.receive(query);
+      return;
+    }
+
+    if (this.props.onQuery) {
+      return this.props.onQuery(query);
+    } else {
+      return false;
+    }
   }
 
   handleDialogConfirm(
@@ -678,14 +704,28 @@ export default class Page extends React.Component<PageProps> {
   }
 
   initInterval(value: any) {
-    const {interval, silentPolling, stopAutoRefreshWhen, data, dispatchEvent} =
-      this.props;
+    const {
+      interval,
+      silentPolling,
+      stopAutoRefreshWhen,
+      data,
+      dispatchEvent,
+      store
+    } = this.props;
 
-    if (value?.data) {
-      dispatchEvent('inited', createObject(data, value.data));
-    }
+    dispatchEvent(
+      'inited',
+      createObject(data, {
+        ...value?.data,
+        responseData: value?.ok ? value?.data ?? {} : value,
+        responseStatus:
+          value?.status === undefined ? (store?.error ? 1 : 0) : value?.status,
+        responseMsg: value?.msg || store?.msg
+      })
+    );
 
-    interval &&
+    value?.ok && // 接口正常返回才继续轮训
+      interval &&
       this.mounted &&
       (!stopAutoRefreshWhen || !evalExpression(stopAutoRefreshWhen, data)) &&
       (this.timer = setTimeout(

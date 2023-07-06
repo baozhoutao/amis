@@ -16,6 +16,7 @@ import pick from 'lodash/pick';
 import {resolveVariableAndFilter} from '../utils/tpl-builtin';
 import {normalizeApiResponseData} from '../utils/api';
 import {matchSorter} from 'match-sorter';
+import {filter} from '../utils/tpl';
 
 class ServerError extends Error {
   type = 'ServerError';
@@ -183,13 +184,14 @@ export const CRUDStore = ServiceStore.named('CRUDStore')
                           })
                         ];
                       });
-                      items = items.filter((item: any) => arrItems.find(a => a === item));
+                      items = items.filter((item: any) =>
+                        arrItems.find(a => a === item)
+                      );
                     }
-                  }
-                  else {
+                  } else {
                     items = matchSorter(items, value, {
                       keys: [key]
-                    })
+                    });
                   }
                 }
               }
@@ -287,14 +289,16 @@ export const CRUDStore = ServiceStore.named('CRUDStore')
             items = result.items || result.rows;
           }
 
-          // 如果不按照 items 格式返回，就拿第一个数组当成 items
           if (!Array.isArray(items)) {
+            // 如果不按照 items 格式返回，就拿第一个数组当成 items
             for (const key of Object.keys(result)) {
               if (result.hasOwnProperty(key) && Array.isArray(result[key])) {
                 items = result[key];
                 break;
               }
             }
+          } else if (items == null) {
+            items = [];
           }
 
           if (!Array.isArray(items)) {
@@ -349,11 +353,11 @@ export const CRUDStore = ServiceStore.named('CRUDStore')
                           })
                         ];
                       });
-                      filteredItems = filteredItems.filter(
-                        item => arrItems.find(a => a === item));
+                      filteredItems = filteredItems.filter(item =>
+                        arrItems.find(a => a === item)
+                      );
                     }
-                  }
-                  else {
+                  } else {
                     filteredItems = matchSorter(filteredItems, value, {
                       keys: [key]
                     });
@@ -584,9 +588,17 @@ export const CRUDStore = ServiceStore.named('CRUDStore')
     };
 
     const exportAsCSV = async (
-      options: {loadDataOnce?: boolean; api?: Api; data?: any} = {}
+      options: {
+        loadDataOnce?: boolean;
+        api?: Api;
+        data?: any;
+        filename?: string;
+      } = {}
     ) => {
       let items = options.loadDataOnce ? self.data.itemsRaw : self.data.items;
+      const filename = options.filename
+        ? filter(options.filename, options.data, '| raw')
+        : 'data';
 
       if (options.api) {
         const env = getEnv(self);
@@ -625,7 +637,7 @@ export const CRUDStore = ServiceStore.named('CRUDStore')
               type: 'text/plain;charset=utf-8'
             }
           );
-          saveAs(blob, 'data.csv');
+          saveAs(blob, `${filename}.csv`);
         }
       });
     };
@@ -642,6 +654,10 @@ export const CRUDStore = ServiceStore.named('CRUDStore')
 
     const updateColumns = (columns: Array<any>) => {
       self.columns = columns;
+    };
+
+    const updateTotal = (total: number) => {
+      self.total = total || 0;
     };
 
     return {
@@ -661,7 +677,8 @@ export const CRUDStore = ServiceStore.named('CRUDStore')
       setInnerModalOpened,
       initFromScope,
       exportAsCSV,
-      updateColumns
+      updateColumns,
+      updateTotal
     };
   });
 

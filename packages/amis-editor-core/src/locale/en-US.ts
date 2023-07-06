@@ -264,5 +264,11 @@ extendLocale('en-US', {
   '5b804b05e14aaacc75033a4f77fc2844': 'Source code',
   '69a53230577258b6d97ee932befcc168': '<Column>:',
   'cc6aeb073ebc3cb29734a49164f8964c': 'Page variables',
-  'b71e8739cb9bcba8057a8fa8b59512da': '<Column>'
+  'b71e8739cb9bcba8057a8fa8b59512da': '<Column>',
+  '34d240d1ded259c32f7fee21e99c5671': 'Preview/Edit',
+  '6722089d251c1e4aabe9d58c26a2208a': 'Turn preview mode on/off',
+  '107542a61cdccbb2981ad0c8bafc3440': 'Replace component',
+  '813a5158d9f7171d20e7df340c5b48f9': 'Component Context',
+  'd2655fdad2c9f8b6f6d7050d65226428':
+    "Exception registering plugin '{{@1}}', there is already a plugin with the same name:"
 });

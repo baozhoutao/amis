@@ -52,6 +52,7 @@ register('en-US', {
   'Pagination.totalCount': 'total {{total}} items',
   'Date.titleYear': 'select year',
   'Date.titleMonth': 'select month and year',
+  'Date.titleQuarter': 'select quarter',
   'Date.titleDate': 'select month, year and day',
   'Date.titleTime': 'select time',
   'Date.daysago': '{{days}} day(s) ago',
@@ -139,7 +140,6 @@ register('en-US', {
   'File.sizeLimit': 'The maximum file size is {{maxSize}}',
   'File.start': 'Start upload',
   'File.upload': 'Upload',
-  'Image.upload': 'Upload image',
   'File.uploadFailed': 'return data of udpload api is empty',
   'File.uploading': 'Uploading',
   'FormItem.autoFillLoadFailed': 'return data of autoUpdate api is error',
@@ -150,8 +150,12 @@ register('en-US', {
   'Form.unique': 'Current value is not unique',
   'Form.validateFailed': 'Form input validation failed',
   'Form.nestedError': 'Form cannot appear as a descendant of form',
+  'File.imageAfterCrop': 'Cropped image',
   'Iframe.invalid': 'Invalid iframe url',
   'Iframe.invalidProtocol': 'Can not use http url iframe in https',
+  'Image.dragTip': 'Drag to sort',
+  'Image.upload': 'Upload image',
+  'Image.errorRetry': 'upload failed, please try again',
   'Image.configError': 'Can only set one of crop or multiple',
   'Image.crop': 'Crop image',
   'Image.dragDrop': `Drag 'n' drop some photos here`,
@@ -233,7 +237,8 @@ register('en-US', {
   'Table.valueField': 'Must have valueField',
   'Table.index': 'Index',
   'Table.add': 'Add',
-  'Table.addButtonDisabledTip': 'In content editing, please submit first and then create a new option',
+  'Table.addButtonDisabledTip':
+    'In content editing, please submit first and then create a new option',
   'Table.toggleColumn': 'Display columns',
   'Table.searchFields': 'Set query fields',
   'Tag.placeholder': 'No tag yet',
@@ -393,5 +398,6 @@ register('en-US', {
   'JSONSchema.array_items': 'Items',
   'TimeNow': 'Now',
   'IconSelect.all': 'All',
-  'IconSelect.choice': 'Icon selection'
+  'IconSelect.choice': 'Icon selection',
+  'Steps.step': 'Step {{index}}'
 });

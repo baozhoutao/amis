@@ -9,10 +9,11 @@ import {Selection as BaseSelection} from 'amis-ui';
 import {ActionObject, toNumber} from 'amis-core';
 import type {ItemRenderStates} from 'amis-ui/lib/components/Selection';
 import {supportStatic} from './StaticHoc';
+import {isMobile} from 'amis-core';
 
 /**
  * TabsTransferPicker 穿梭器的弹框形态
- * 文档：https://baidu.gitee.io/amis/docs/components/form/tabs-transfer-picker
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/tabs-transfer-picker
  */
 export interface TabsTransferPickerControlSchema
   extends Omit<TabsTransferControlSchema, 'type'>,
@@ -104,8 +105,14 @@ export class TabsTransferPickerRenderer extends BaseTabsTransferRenderer<TabsTra
       leftOptions,
       itemHeight,
       virtualThreshold,
-      loadingConfig
+      loadingConfig,
+      labelField = 'label',
+      valueField = 'value',
+      useMobileUI,
+      env,
+      popOverContainer
     } = this.props;
+    const mobileUI = useMobileUI && isMobile();
 
     return (
       <div className={cx('TabsTransferControl', className)}>
@@ -135,6 +142,16 @@ export class TabsTransferPickerRenderer extends BaseTabsTransferRenderer<TabsTra
             toNumber(itemHeight) > 0 ? toNumber(itemHeight) : undefined
           }
           virtualThreshold={virtualThreshold}
+          labelField={labelField}
+          valueField={valueField}
+          useMobileUI={useMobileUI}
+          popOverContainer={
+            mobileUI && env && env.getModalContainer
+              ? env.getModalContainer
+              : mobileUI
+              ? undefined
+              : popOverContainer
+          }
         />
 
         <Spinner

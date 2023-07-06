@@ -7,7 +7,7 @@ import {
   EditorManager
 } from 'amis-editor-core';
 import type {DSField} from 'amis-editor-core';
-import type {SchemaObject} from 'amis/lib/Schema';
+import type {SchemaObject} from 'amis';
 import flatten from 'lodash/flatten';
 import _ from 'lodash';
 import {InputComponentName} from '../component/InputComponentName';
@@ -81,11 +81,13 @@ setSchemaTpl(
   (config: {
     // 是不是独立表单，没有可以集成的内容
     isForm: boolean;
+    /** 预设布局 */
+    defaultValue?: 'inline' | 'horizontal' | 'normal' | '';
   }) => ({
     label: '布局',
     name: 'mode',
     type: 'select',
-    pipeIn: defaultValue(''),
+    pipeIn: defaultValue(config?.defaultValue ?? ''),
     options: [
       {
         label: '内联',
@@ -112,6 +114,7 @@ setSchemaTpl(
 setSchemaTpl('formulaControl', (schema: object = {}) => {
   return {
     type: 'ae-formulaControl',
+    variableMode: 'tree',
     ...schema
   };
 });
@@ -119,6 +122,7 @@ setSchemaTpl('formulaControl', (schema: object = {}) => {
 setSchemaTpl('expressionFormulaControl', (schema: object = {}) => {
   return {
     type: 'ae-expressionFormulaControl',
+    variableMode: 'tree',
     ...schema
   };
 });
@@ -126,6 +130,7 @@ setSchemaTpl('expressionFormulaControl', (schema: object = {}) => {
 setSchemaTpl('textareaFormulaControl', (schema: object = {}) => {
   return {
     type: 'ae-textareaFormulaControl',
+    variableMode: 'tree',
     ...schema
   };
 });
@@ -133,6 +138,7 @@ setSchemaTpl('textareaFormulaControl', (schema: object = {}) => {
 setSchemaTpl('tplFormulaControl', (schema: object = {}) => {
   return {
     type: 'ae-tplFormulaControl',
+    variableMode: 'tree',
     ...schema
   };
 });
@@ -335,6 +341,7 @@ setSchemaTpl(
       key: string;
       visibleOn: string;
       body: Array<any>;
+      collapsed?: boolean;
     }>
   ) => {
     const collapseGroupBody = config
@@ -343,17 +350,19 @@ setSchemaTpl(
       )
       .map(item => ({
         type: 'collapse',
-        collapsed: false,
         headingClassName: 'ae-formItemControl-header',
         bodyClassName: 'ae-formItemControl-body',
         ...item,
+        collapsed: item.collapsed ?? false,
         key: item.title,
         body: flatten(item.body)
       }));
 
     return {
       type: 'collapse-group',
-      activeKey: collapseGroupBody.map(panel => panel.title),
+      activeKey: collapseGroupBody
+        .filter(item => item && !item.collapsed)
+        .map(panel => panel.title),
       expandIconPosition: 'right',
       expandIcon: {
         type: 'icon',
@@ -621,6 +630,20 @@ setSchemaTpl(
     });
   }
 );
+
+/**
+ * 数据源绑定
+ */
+setSchemaTpl('sourceBindControl', (schema: object = {}) => ({
+  type: 'ae-formulaControl',
+  name: 'source',
+  label: '数据',
+  variableMode: 'tree',
+  inputMode: 'input-group',
+  placeholder: '请输入表达式',
+  requiredDataPropsVariables: true,
+  ...schema
+}));
 
 setSchemaTpl('menuTpl', () => {
   return getSchemaTpl('textareaFormulaControl', {
@@ -1143,13 +1166,6 @@ setSchemaTpl('nav-badge', {
 setSchemaTpl('nav-default-active', {
   type: 'ae-nav-default-active'
 });
-// 暂未使用
-setSchemaTpl('formulaControl', (schema: object = {}) => {
-  return {
-    type: 'ae-formulaControl',
-    ...schema
-  };
-});
 
 /**
  * 日期范围快捷键组件
@@ -1157,6 +1173,7 @@ setSchemaTpl('formulaControl', (schema: object = {}) => {
 setSchemaTpl('dateShortCutControl', (schema: object = {}) => {
   return {
     type: 'ae-DateShortCutControl',
+    name: 'shortcuts',
     ...schema
   };
 });
@@ -1205,17 +1222,6 @@ setSchemaTpl('app-page-args', {
       valueField: 'value',
       required: true
     },
-    /*
-     {
-      name: 'val',
-      type: 'input-formula',
-      placeholder: '参数值',
-      variables: '${variables}',
-      evalMode: false,
-      variableMode: 'tabs',
-      inputMode: 'input-group'
-    }
-     */
     getSchemaTpl('formulaControl', {
       name: 'val',
       variables: '${variables}',

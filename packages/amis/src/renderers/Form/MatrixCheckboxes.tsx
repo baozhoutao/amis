@@ -13,13 +13,13 @@ import {
 import {buildApi, isValidApi, isEffectiveApi} from 'amis-core';
 import {Checkbox, Spinner, SpinnerExtraProps} from 'amis-ui';
 import {setVariable, createObject} from 'amis-core';
-import {ApiObject, ActionObject} from 'amis-core';
+import {ApiObject, ActionObject, isMobile} from 'amis-core';
 import {FormBaseControlSchema, SchemaApi} from '../../Schema';
 import {supportStatic} from './StaticHoc';
 
 /**
  * Matrix 选择控件。适合做权限勾选。
- * 文档：https://baidu.gitee.io/amis/docs/components/form/matrix
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/matrix
  */
 export interface MatrixControlSchema extends FormBaseControlSchema {
   type: 'matrix-checkboxes';
@@ -297,7 +297,7 @@ export default class MatrixCheckbox extends React.Component<
     const value = this.props.value || buildDefaultValue(columns, rows);
 
     return (
-      <div className={cx('Table m-b-none')}>
+      <div className={cx('Table m-b-none', {'is-mobile': isMobile()})}>
         <div className={cx('Table-content')}>
           <table className={cx('Table-table')}>
             <thead>

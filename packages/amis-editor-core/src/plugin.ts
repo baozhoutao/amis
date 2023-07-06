@@ -13,7 +13,6 @@ import find from 'lodash/find';
 import type {RendererConfig} from 'amis-core';
 import type {MenuDivider, MenuItem} from 'amis-ui/lib/components/ContextMenu';
 import type {BaseSchema, SchemaCollection} from 'amis';
-import {DSFieldGroup} from './builder/DSBuilder';
 
 /**
  * 区域的定义，容器渲染器都需要定义区域信息。
@@ -291,6 +290,8 @@ export interface RendererInfo extends RendererScaffoldInfo {
   memberIndex?: number;
 
   tipName?: string;
+  /** 共享上下文 */
+  sharedContext?: Record<string, any>;
 }
 
 export type BasicRendererInfo = Omit<
@@ -315,6 +316,8 @@ export interface PopOverForm {
 export interface ScaffoldForm extends PopOverForm {
   // 内容是否是分步骤的，如果是，body必须是?: Array<{title: string,body: any[]}>
   stepsBody?: boolean;
+  /** 是否可跳过创建向导直接创建 */
+  canSkip?: boolean;
   mode?:
     | 'normal'
     | 'horizontal'
@@ -592,9 +595,12 @@ export type PluginEvent<T, P = any> = {
 
   // 当前值
   data?: P;
+
+  // value值
+  value?: any;
 };
 
-export type PluginEventFn = (e: PluginEvent<EventContext>) => false | void;
+export type PluginEventFn = (e: PluginEvent<EventContext>) => any;
 
 /**
  * 创建事件。

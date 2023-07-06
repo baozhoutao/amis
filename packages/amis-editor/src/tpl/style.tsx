@@ -1,5 +1,5 @@
 import {setSchemaTpl, getSchemaTpl, defaultValue} from 'amis-editor-core';
-import type {SchemaCollection} from 'amis/lib/Schema';
+import type {SchemaCollection} from 'amis';
 import kebabCase from 'lodash/kebabCase';
 
 setSchemaTpl('style:formItem', ({renderer, schema}: any) => {
@@ -430,8 +430,7 @@ setSchemaTpl(
   'theme:cssCode',
   ({
     themeClass = [],
-    isFormItem,
-    isLayout
+    isFormItem
   }: {
     themeClass?: any[];
     isFormItem?: boolean;
@@ -466,6 +465,10 @@ setSchemaTpl('theme:form-label', () => {
   return {
     title: 'Label样式',
     body: [
+      getSchemaTpl('theme:select', {
+        label: '宽度',
+        name: 'labelWidth'
+      }),
       getSchemaTpl('theme:font', {
         label: '文字',
         name: 'themeCss.labelClassName.font:default',
@@ -493,6 +496,18 @@ setSchemaTpl('theme:form-description', () => {
         name: 'themeCss.descriptionClassName.padding-and-margin:default'
       })
     ]
+  };
+});
+
+// 尺寸选择器
+setSchemaTpl('theme:select', (option: any = {}) => {
+  return {
+    mode: 'default',
+    type: 'amis-theme-select',
+    label: '尺寸',
+    name: `themeCss.className.size:default`,
+    options: '${sizesOptions}',
+    ...option
   };
 });
 
@@ -571,13 +586,20 @@ setSchemaTpl('theme:size', (option: any = {}) => {
     type: 'amis-theme-select',
     label: false,
     name: `css.className.size`,
+    options: '${sizesOptions}',
     ...option
   };
 });
 
 setSchemaTpl(
   'theme:common',
-  (exclude: string[] | string, include: string[]) => {
+  (option: {
+    exclude: string[] | string;
+    include: string[];
+    collapsed?: boolean;
+  }) => {
+    let {exclude, include, collapsed} = option || {};
+    const curCollapsed = collapsed ?? false; // 默认都展开
     // key统一转换成Kebab case，eg: boxShadow => bos-shadow
     exclude = (
       exclude ? (Array.isArray(exclude) ? exclude : [exclude]) : []
@@ -604,6 +626,7 @@ setSchemaTpl(
         label: '背景',
         needCustom: true,
         needGradient: true,
+        needImage: true,
         labelMode: 'input'
       }),
       getSchemaTpl('theme:shadow', {
@@ -614,6 +637,7 @@ setSchemaTpl(
       {
         header: '布局',
         key: 'layout',
+        collapsed: curCollapsed,
         body: [
           {
             type: 'style-display',
@@ -624,10 +648,12 @@ setSchemaTpl(
       },
       {
         title: '自定义样式',
+        collapsed: curCollapsed,
         body: styles
       },
       {
         title: '样式源码',
+        collapsed: curCollapsed,
         body: [
           {
             type: 'theme-cssCode',

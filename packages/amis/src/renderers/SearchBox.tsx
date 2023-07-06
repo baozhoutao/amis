@@ -20,7 +20,7 @@ export interface SearchBoxSchema extends BaseSchema {
   /**
    * 指定为搜索框。
    *
-   * 文档：https://baidu.gitee.io/amis/docs/components/search-box
+   * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/search-box
    */
   type: 'search-box';
 
@@ -71,7 +71,7 @@ interface SearchBoxProps
   extends RendererProps,
     Omit<SearchBoxSchema, 'type' | 'className'> {
   name: string;
-  onQuery?: (query: {[propName: string]: string}) => void;
+  onQuery?: (query: {[propName: string]: string}) => any;
 }
 
 export interface SearchBoxState {
@@ -196,7 +196,8 @@ export class SearchBoxRenderer extends React.Component<
       placeholder,
       onChange,
       className,
-      style
+      style,
+      useMobileUI
     } = this.props;
 
     const value = this.state.value;
@@ -221,6 +222,7 @@ export class SearchBoxRenderer extends React.Component<
         onChange={this.handleChange}
         onFocus={() => this.dispatchEvent('focus')}
         onBlur={() => this.dispatchEvent('blur')}
+        useMobileUI={useMobileUI}
       />
     );
   }

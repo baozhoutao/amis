@@ -33,6 +33,7 @@ export interface ImageGalleryProps extends ThemeProps, LocaleProps {
   modalContainer?: () => HTMLElement;
   /** 操作栏 */
   actions?: ImageAction[];
+  imageGallaryClassName?: string;
 }
 
 export interface ImageGalleryState {
@@ -50,6 +51,10 @@ export interface ImageGalleryState {
   rotate: number;
   /** 是否开启操作栏 */
   showToolbar?: boolean;
+  /** 是否显示底部图片集 */
+  enlargeWithGallary?: boolean;
+  /** 放大详情图类名 */
+  imageGallaryClassName?: string;
   /** 工具栏配置 */
   actions?: ImageAction[];
 }
@@ -87,6 +92,7 @@ export class ImageGallery extends React.Component<
     scale: 1,
     rotate: 0,
     showToolbar: false,
+    imageGallaryClassName: '',
     actions: ImageGallery.defaultProps.actions
   };
 
@@ -136,7 +142,9 @@ export class ImageGallery extends React.Component<
     caption?: string;
     index?: number;
     showToolbar?: boolean;
+    imageGallaryClassName?: string;
     toolbarActions?: ImageAction[];
+    enlargeWithGallary?: boolean;
   }) {
     const {actions} = this.props;
     const validActionKeys = Object.values(ImageActionKey);
@@ -147,6 +155,8 @@ export class ImageGallery extends React.Component<
       index: info.index || 0,
       /* children组件可以控制工具栏的展示 */
       showToolbar: !!info.showToolbar,
+      enlargeWithGallary: info.enlargeWithGallary,
+      imageGallaryClassName: info.imageGallaryClassName,
       /** 外部传入合法key值的actions才会生效 */
       actions: Array.isArray(info.toolbarActions)
         ? info.toolbarActions.filter(action =>
@@ -265,7 +275,16 @@ export class ImageGallery extends React.Component<
 
   render() {
     const {children, classnames: cx, modalContainer} = this.props;
-    const {index, items, rotate, scale, showToolbar, actions} = this.state;
+    const {
+      index,
+      items,
+      rotate,
+      scale,
+      showToolbar,
+      enlargeWithGallary,
+      actions,
+      imageGallaryClassName
+    } = this.state;
     const __ = this.props.translate;
 
     return (
@@ -279,7 +298,7 @@ export class ImageGallery extends React.Component<
           size="full"
           onHide={this.close}
           show={this.state.isOpened}
-          contentClassName={cx('ImageGallery')}
+          contentClassName={cx('ImageGallery', imageGallaryClassName)}
           container={modalContainer}
         >
           <a
@@ -308,7 +327,7 @@ export class ImageGallery extends React.Component<
                   ? this.renderToolbar(actions)
                   : null}
 
-                {items.length > 1 ? (
+                {items.length > 1 && enlargeWithGallary !== false ? (
                   <>
                     <a
                       className={cx(
@@ -334,7 +353,7 @@ export class ImageGallery extends React.Component<
             </>
           ) : null}
 
-          {items.length > 1 ? (
+          {items.length > 1 && enlargeWithGallary !== false ? (
             <div className={cx('ImageGallery-footer')}>
               <a className={cx('ImageGallery-prevList is-disabled')}>
                 <Icon icon="prev" className="icon" />

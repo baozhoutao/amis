@@ -2058,7 +2058,6 @@ exports[`Renderer:select menutpl 1`] = `
                     <div
                       aria-expanded="false"
                       aria-haspopup="listbox"
-                      aria-labelledby="downshift-0-label"
                       class="cxd-Select"
                       role="combobox"
                       tabindex="0"
@@ -2864,6 +2863,7 @@ exports[`Renderer:select table with labelField & valueField 1`] = `
                           >
                             <label
                               class="cxd-Checkbox cxd-Checkbox--checkbox cxd-Checkbox--sm"
+                              data-role="checkbox"
                             >
                               <input
                                 type="checkbox"
@@ -2891,6 +2891,7 @@ exports[`Renderer:select table with labelField & valueField 1`] = `
                           >
                             <label
                               class="cxd-Checkbox cxd-Checkbox--checkbox cxd-Checkbox--full cxd-Checkbox--sm"
+                              data-role="checkbox"
                             >
                               <input
                                 type="checkbox"
@@ -2920,6 +2921,7 @@ exports[`Renderer:select table with labelField & valueField 1`] = `
                           >
                             <label
                               class="cxd-Checkbox cxd-Checkbox--checkbox cxd-Checkbox--full cxd-Checkbox--sm"
+                              data-role="checkbox"
                             >
                               <input
                                 type="checkbox"
@@ -2949,6 +2951,7 @@ exports[`Renderer:select table with labelField & valueField 1`] = `
                           >
                             <label
                               class="cxd-Checkbox cxd-Checkbox--checkbox cxd-Checkbox--full cxd-Checkbox--sm"
+                              data-role="checkbox"
                             >
                               <input
                                 type="checkbox"
@@ -2978,6 +2981,7 @@ exports[`Renderer:select table with labelField & valueField 1`] = `
                           >
                             <label
                               class="cxd-Checkbox cxd-Checkbox--checkbox cxd-Checkbox--full cxd-Checkbox--sm"
+                              data-role="checkbox"
                             >
                               <input
                                 type="checkbox"
@@ -3007,6 +3011,7 @@ exports[`Renderer:select table with labelField & valueField 1`] = `
                           >
                             <label
                               class="cxd-Checkbox cxd-Checkbox--checkbox cxd-Checkbox--full cxd-Checkbox--sm"
+                              data-role="checkbox"
                             >
                               <input
                                 type="checkbox"
@@ -3036,6 +3041,7 @@ exports[`Renderer:select table with labelField & valueField 1`] = `
                           >
                             <label
                               class="cxd-Checkbox cxd-Checkbox--checkbox cxd-Checkbox--full cxd-Checkbox--sm"
+                              data-role="checkbox"
                             >
                               <input
                                 type="checkbox"
@@ -3384,7 +3390,6 @@ exports[`Renderer:select virtual 1`] = `
             <div
               aria-expanded="true"
               aria-haspopup="listbox"
-              aria-labelledby="downshift-1-label"
               aria-owns="downshift-1-menu"
               class="cxd-Select is-opened has-popover"
               role="combobox"

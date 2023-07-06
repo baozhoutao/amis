@@ -1,5 +1,5 @@
 import React from 'react';
-import {ScopedContext, IScopedContext} from 'amis-core';
+import {ScopedContext, IScopedContext, filterTarget} from 'amis-core';
 import {Renderer, RendererProps} from 'amis-core';
 import {SchemaNode, Schema, ActionObject} from 'amis-core';
 import {filter} from 'amis-core';
@@ -29,7 +29,7 @@ import {isAlive} from 'mobx-state-tree';
 
 /**
  * Dialog 弹框渲染器。
- * 文档：https://baidu.gitee.io/amis/docs/components/dialog
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/dialog
  */
 export interface DialogSchema extends BaseSchema {
   type: 'dialog';
@@ -105,6 +105,16 @@ export interface DialogSchema extends BaseSchema {
    * 是否显示 spinner
    */
   showLoading?: boolean;
+
+  /**
+   * 是否显示蒙层
+   */
+  overlay?: boolean;
+
+  /**
+   * 弹框类型 confirm 确认弹框
+   */
+  dialogType?: 'confirm';
 }
 
 export type DialogSchemaBase = Omit<DialogSchema, 'type'>;
@@ -145,7 +155,8 @@ export default class Dialog extends React.Component<DialogProps> {
     'showCloseButton',
     'showErrorMsg',
     'actions',
-    'popOverContainer'
+    'popOverContainer',
+    'overlay'
   ];
   static defaultProps = {
     title: 'Dialog.title',
@@ -364,7 +375,8 @@ export default class Dialog extends React.Component<DialogProps> {
   }
 
   handleExited() {
-    const {lazySchema, store} = this.props;
+    const {lazySchema, store, statusStore} = this.props;
+    statusStore && isAlive(statusStore) && statusStore.resetAll();
     if (isAlive(store)) {
       store.reset();
       store.setEntered(false);
@@ -532,7 +544,13 @@ export default class Dialog extends React.Component<DialogProps> {
       classnames: cx,
       classPrefix,
       translate: __,
-      loadingConfig
+      loadingConfig,
+      overlay,
+      dialogType,
+      cancelText,
+      confirmText,
+      confirmBtnLevel,
+      cancelBtnLevel
     } = {
       ...this.props,
       ...store.schema
@@ -560,6 +578,12 @@ export default class Dialog extends React.Component<DialogProps> {
         }
         enforceFocus={false}
         disabled={store.loading}
+        overlay={overlay}
+        dialogType={dialogType}
+        cancelText={cancelText}
+        confirmText={confirmText}
+        confirmBtnLevel={confirmBtnLevel}
+        cancelBtnLevel={cancelBtnLevel}
       >
         {title && typeof title === 'string' ? (
           <div className={cx('Modal-header', headerClassName)}>
@@ -570,7 +594,11 @@ export default class Dialog extends React.Component<DialogProps> {
                 onClick={this.handleSelfClose}
                 className={cx('Modal-close')}
               >
-                <Icon icon="close" className="icon" />
+                <Icon
+                  icon="close"
+                  className="icon"
+                  iconContent="Dialog-close"
+                />
               </a>
             ) : null}
             <div className={cx('Modal-title')}>
@@ -585,7 +613,11 @@ export default class Dialog extends React.Component<DialogProps> {
                 onClick={this.handleSelfClose}
                 className={cx('Modal-close')}
               >
-                <Icon icon="close" className="icon" />
+                <Icon
+                  icon="close"
+                  className="icon"
+                  iconContent="Dialog-close"
+                />
               </a>
             ) : null}
             {render('title', title, {
@@ -599,7 +631,7 @@ export default class Dialog extends React.Component<DialogProps> {
             onClick={this.handleSelfClose}
             className={cx('Modal-close')}
           >
-            <Icon icon="close" className="icon" />
+            <Icon icon="close" className="icon" iconContent="Dialog-close" />
           </a>
         ) : null}
 
@@ -821,7 +853,11 @@ export class DialogRenderer extends Dialog {
       // clear error
       store.updateMessage();
       onClose();
-      action.close && this.closeTarget(action.close);
+      if (action.close) {
+        action.close === true
+          ? this.handleSelfClose()
+          : this.closeTarget(action.close);
+      }
     } else if (action.actionType === 'confirm') {
       const rendererEvent = await dispatchEvent(
         'confirm',
@@ -863,7 +899,7 @@ export class DialogRenderer extends Dialog {
       }
     } else if (action.actionType === 'dialog') {
       store.setCurrentAction(action);
-      store.openDialog(data);
+      store.openDialog(data, undefined, action.callback);
     } else if (action.actionType === 'drawer') {
       store.setCurrentAction(action);
       store.openDrawer(data);
@@ -872,7 +908,9 @@ export class DialogRenderer extends Dialog {
       action.target && scoped.reload(action.target, data);
       if (action.close || action.type === 'submit') {
         this.handleSelfClose(undefined, action.type === 'submit');
-        this.closeTarget(action.close);
+        action.close &&
+          typeof action.close === 'string' &&
+          this.closeTarget(action.close);
       }
     } else if (this.tryChildrenToHandle(action, data)) {
       // do nothing
@@ -892,10 +930,14 @@ export class DialogRenderer extends Dialog {
             action.redirect && filter(action.redirect, store.data);
           reidrect && env.jumpTo(reidrect, action);
           action.reload &&
-            this.reloadTarget(filter(action.reload, store.data), store.data);
+            this.reloadTarget(
+              filterTarget(action.reload, store.data),
+              store.data
+            );
           if (action.close) {
-            this.handleSelfClose();
-            this.closeTarget(action.close);
+            action.close === true
+              ? this.handleSelfClose()
+              : this.closeTarget(action.close);
           }
         })
         .catch(e => {
@@ -904,7 +946,7 @@ export class DialogRenderer extends Dialog {
           }
         });
     } else if (onAction) {
-      let ret = onAction(
+      await onAction(
         e,
         {
           ...action,
@@ -914,10 +956,12 @@ export class DialogRenderer extends Dialog {
         throwErrors,
         delegate || this.context
       );
-      action.close &&
-        (ret && ret.then
-          ? ret.then(this.handleSelfClose)
-          : setTimeout(this.handleSelfClose, 200));
+
+      if (action.close) {
+        action.close === true
+          ? this.handleSelfClose()
+          : this.closeTarget(action.close);
+      }
     }
   }
 

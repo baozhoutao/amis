@@ -23,7 +23,7 @@ import type {ItemRenderStates} from 'amis-ui/lib/components/Selection';
 
 /**
  * Tree 下拉选择框。
- * 文档：https://baidu.gitee.io/amis/docs/components/form/tree
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/tree
  */
 export interface TreeControlSchema extends FormOptionsSchema {
   type: 'input-tree';
@@ -173,6 +173,7 @@ export interface TreeProps
     SpinnerExtraProps {
   enableNodePath?: boolean;
   pathSeparator?: string;
+  useMobileUI?: boolean;
 }
 
 interface TreeState {
@@ -377,7 +378,8 @@ export default class TreeControl extends React.Component<TreeProps, TreeState> {
       enableDefaultIcon,
       searchable,
       searchConfig = {},
-      heightAuto
+      heightAuto,
+      useMobileUI
     } = this.props;
     let {highlightTxt} = this.props;
     const {filteredOptions, keyword} = this.state;
@@ -439,6 +441,7 @@ export default class TreeControl extends React.Component<TreeProps, TreeState> {
         itemHeight={toNumber(itemHeight) > 0 ? toNumber(itemHeight) : undefined}
         itemRender={menuTpl ? this.renderOptionItem : undefined}
         enableDefaultIcon={enableDefaultIcon}
+        useMobileUI={useMobileUI}
       />
     );
 
@@ -467,6 +470,7 @@ export default class TreeControl extends React.Component<TreeProps, TreeState> {
               clearable={true}
               {...omit(searchConfig, 'className', 'sticky')}
               onSearch={this.handleSearch}
+              useMobileUI={useMobileUI}
             />
             {TreeCmpt}
           </>

@@ -9,6 +9,7 @@ import {isObject} from 'amis-core';
 // input-kv 实际上是 combo 的一种扩展
 addSchemaFilter(function (schema: Schema, renderer, props?: any) {
   if (schema && schema.type === 'input-kv') {
+    const autoParseJSON = schema.autoParseJSON ?? true;
     return {
       draggable: true,
       ...schema,
@@ -40,7 +41,11 @@ addSchemaFilter(function (schema: Schema, renderer, props?: any) {
         value.forEach((item: any) => {
           const key: string = item.key ?? '';
           let value: any = item.value ?? schema.defaultValue ?? '';
-          if (typeof value === 'string' && value.startsWith('{')) {
+          if (
+            autoParseJSON &&
+            typeof value === 'string' &&
+            value.startsWith('{')
+          ) {
             try {
               value = JSON.parse(value);
             } catch (e) {}
@@ -51,15 +56,25 @@ addSchemaFilter(function (schema: Schema, renderer, props?: any) {
         return obj;
       },
       items: [
-        {
-          placeholder: schema.keyPlaceholder ?? 'Key',
-          type: 'input-text',
-          unique: true,
-          name: 'key',
-          required: true,
-          validateOnChange: true
-        },
-        schema.valueComponent
+        schema.keySchema
+          ? {
+              ...schema.keySchema,
+              unique: true,
+              name: 'key',
+              required: true,
+              validateOnChange: true
+            }
+          : {
+              placeholder: schema.keyPlaceholder ?? 'Key',
+              type: 'input-text',
+              unique: true,
+              name: 'key',
+              required: true,
+              validateOnChange: true
+            },
+        schema.valueSchema
+          ? {...schema.valueSchema, name: 'value'}
+          : schema.valueComponent
           ? {
               placeholder: schema.valuePlaceholder ?? 'Value',
               component: schema.valueComponent,

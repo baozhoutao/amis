@@ -1,5 +1,5 @@
 import {Button} from 'amis';
-import type {SchemaCollection} from 'amis/lib/Schema';
+import type {SchemaCollection} from 'amis';
 import React from 'react';
 import {
   BaseEventContext,
@@ -14,6 +14,7 @@ import {
 } from 'amis-editor-core';
 
 export class SubFormControlPlugin extends BasePlugin {
+  static id = 'SubFormControlPlugin';
   // 关联渲染器名字
   rendererName = 'input-sub-form';
   $schema = '/schemas/SubFormControlSchema.json';

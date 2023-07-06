@@ -256,18 +256,16 @@ run action ajax
           actions: [
             {
               actionType: 'ajax',
-              args: {
-                api: {
-                  url: 'https://3xsw4ap8wah59.cfc-execute.bj.baidubce.com/api/amis-mock/mock2/form/saveForm?name=${name}',
-                  method: 'get',
-                  "responseData": {
-                    "resId": "${id}"
-                  }
+              api: {
+                url: 'https://3xsw4ap8wah59.cfc-execute.bj.baidubce.com/api/amis-mock/mock2/form/saveForm?name=${name}',
+                method: 'post',
+                responseData: {
+                  "resId": "${id}",
                 },
                 messages: {
                   success: '成功了！欧耶',
                   failed: '失败了呢。。'
-                }
+                },
               },
               data: {
                 age: 18
@@ -296,18 +294,16 @@ run action ajax
           actions: [
             {
               actionType: 'ajax',
-              args: {
-                api: {
-                  url: 'https://3xsw4ap8wah59.cfc-execute.bj.baidubce.com/api/amis-mock/initData',
-                  method: 'post'
-                },
+              api: {
+                url: 'https://3xsw4ap8wah59.cfc-execute.bj.baidubce.com/api/amis-mock/initData',
+                method: 'post',
                 messages: {
                   success: '成功了！欧耶',
                   failed: '失败了呢。。'
                 },
-                options: {
-                  silent: true
-                }
+              },
+              options: {
+                silent: true,
               },
               data: {
                 age: 18
@@ -328,9 +324,7 @@ run action ajax
 }
 ```
 
-**动作属性（args）**
-
-> `< 1.8.0 及以下版本`，以下属性与 args 同级。
+**动作属性**
 
 | 属性名   | 类型                                | 默认值 | 说明                      |
 | -------- | ----------------------------------- | ------ | ------------------------- |
@@ -377,57 +371,55 @@ run action ajax
           actions: [
             {
               actionType: 'dialog',
-              args: {
-                dialog: {
-                  type: 'dialog',
-                  title: '模态弹窗',
-                  id: 'dialog_001',
-                  data: {
-                    myage: '22'
+              dialog: {
+                type: 'dialog',
+                title: '模态弹窗',
+                id: 'dialog_001',
+                data: {
+                  myage: '22'
+                },
+                body: [
+                  {
+                    type: 'tpl',
+                    tpl: '<p>对，你打开了模态弹窗</p>',
+                    inline: false
                   },
-                  body: [
-                    {
-                      type: 'tpl',
-                      tpl: '<p>对，你打开了模态弹窗</p>',
-                      inline: false
-                    },
-                    {
-                      type: 'input-text',
-                      name: 'myname',
-                      mode: 'horizontal',
-                      onEvent: {
-                        change: {
-                          actions: [
-                            {
-                              actionType: 'confirm',
-                              componentId: 'dialog_001'
-                            }
-                          ]
-                        }
+                  {
+                    type: 'input-text',
+                    name: 'myname',
+                    mode: 'horizontal',
+                    onEvent: {
+                      change: {
+                        actions: [
+                          {
+                            actionType: 'confirm',
+                            componentId: 'dialog_001'
+                          }
+                        ]
                       }
                     }
-                  ],
-                  onEvent: {
-                    confirm: {
-                      actions: [
-                        {
-                          actionType: 'toast',
-                          args: {
-                            msg: 'confirm'
-                          }
+                  }
+                ],
+                onEvent: {
+                  confirm: {
+                    actions: [
+                      {
+                        actionType: 'toast',
+                        args: {
+                          msg: 'confirm'
                         }
-                      ]
-                    },
-                    cancel: {
-                      actions: [
-                        {
-                          actionType: 'toast',
-                          args: {
-                            msg: 'cancel'
-                          }
+                      }
+                    ]
+                  },
+                  cancel: {
+                    actions: [
+                      {
+                        actionType: 'toast',
+                        args: {
+                          msg: 'cancel'
                         }
-                      ]
-                    }
+                      }
+                    ]
                   }
                 }
               }
@@ -440,9 +432,7 @@ run action ajax
 }
 ```
 
-**动作属性（args）**
-
-> `< 2.3.2 及以下版本`，以下属性与 args 同级。
+**动作属性**
 
 | 属性名 | 类型                    | 默认值 | 说明                                                      |
 | ------ | ----------------------- | ------ | --------------------------------------------------------- |
@@ -466,63 +456,59 @@ run action ajax
           actions: [
             {
               actionType: 'dialog',
-              args: {
-                dialog: {
-                  type: 'dialog',
-                  id: 'dialog_002',
-                  title: '模态弹窗',
-                  body: [
-                    {
-                      type: 'button',
-                      label: '打开子弹窗，然后关闭它的父亲',
-                      onEvent: {
-                        click: {
-                          actions: [
-                            {
-                              actionType: 'dialog',
-                              args: {
-                                dialog: {
-                                  type: 'dialog',
-                                  title: '模态子弹窗',
-                                  body: [
-                                    {
-                                      type: 'button',
-                                      label: '关闭指定弹窗（关闭父弹窗）',
-                                      onEvent: {
-                                        click: {
-                                          actions: [
-                                            {
-                                              actionType: 'closeDialog',
-                                              componentId: 'dialog_002'
-                                            }
-                                          ]
+              dialog: {
+                type: 'dialog',
+                id: 'dialog_002',
+                title: '模态弹窗',
+                body: [
+                  {
+                    type: 'button',
+                    label: '打开子弹窗，然后关闭它的父亲',
+                    onEvent: {
+                      click: {
+                        actions: [
+                          {
+                            actionType: 'dialog',
+                            dialog: {
+                              type: 'dialog',
+                              title: '模态子弹窗',
+                              body: [
+                                {
+                                  type: 'button',
+                                  label: '关闭指定弹窗（关闭父弹窗）',
+                                  onEvent: {
+                                    click: {
+                                      actions: [
+                                        {
+                                          actionType: 'closeDialog',
+                                          componentId: 'dialog_002'
                                         }
-                                      }
+                                      ]
                                     }
-                                  ]
+                                  }
                                 }
-                              }
+                              ]
                             }
-                          ]
-                        }
-                      }
-                    },
-                    {
-                      type: 'button',
-                      label: '关闭当前弹窗',
-                      className: 'ml-2',
-                      onEvent: {
-                        click: {
-                          actions: [
-                            {
-                              actionType: 'closeDialog'
-                            }
-                          ]
-                        }
+                          }
+                        ]
                       }
                     }
-                  ]
-                }
+                  },
+                  {
+                    type: 'button',
+                    label: '关闭当前弹窗',
+                    className: 'ml-2',
+                    onEvent: {
+                      click: {
+                        actions: [
+                          {
+                            actionType: 'closeDialog'
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
               }
             }
           ]
@@ -557,38 +543,36 @@ run action ajax
           actions: [
             {
               actionType: 'drawer',
-              args: {
-                drawer: {
-                  type: 'drawer',
-                  title: '模态抽屉',
-                  body: [
-                    {
-                      type: 'tpl',
-                      tpl: '<p>对，你打开了模态抽屉</p>',
-                      inline: false
-                    }
-                  ],
-                  onEvent: {
-                    confirm: {
-                      actions: [
-                        {
-                          actionType: 'toast',
-                          args: {
-                            msg: 'confirm'
-                          }
+              drawer: {
+                type: 'drawer',
+                title: '模态抽屉',
+                body: [
+                  {
+                    type: 'tpl',
+                    tpl: '<p>对，你打开了模态抽屉</p>',
+                    inline: false
+                  }
+                ],
+                onEvent: {
+                  confirm: {
+                    actions: [
+                      {
+                        actionType: 'toast',
+                        args: {
+                          msg: 'confirm'
                         }
-                      ]
-                    },
-                    cancel: {
-                      actions: [
-                        {
-                          actionType: 'toast',
-                          args: {
-                            msg: 'cancel'
-                          }
+                      }
+                    ]
+                  },
+                  cancel: {
+                    actions: [
+                      {
+                        actionType: 'toast',
+                        args: {
+                          msg: 'cancel'
                         }
-                      ]
-                    }
+                      }
+                    ]
                   }
                 }
               }
@@ -601,9 +585,7 @@ run action ajax
 }
 ```
 
-**动作属性（args）**
-
-> `< 2.3.2 及以下版本`，以下属性与 args 同级。
+**动作属性**
 
 | 属性名 | 类型                    | 默认值 | 说明                                                      |
 | ------ | ----------------------- | ------ | --------------------------------------------------------- |
@@ -626,63 +608,59 @@ run action ajax
           actions: [
             {
               actionType: 'drawer',
-              args: {
-                drawer: {
-                  type: 'drawer',
-                  id: 'drawer_1',
-                  title: '模态抽屉',
-                  body: [
-                    {
-                      type: 'button',
-                      label: '打开子抽屉，然后关闭它的父亲',
-                      onEvent: {
-                        click: {
-                          actions: [
-                            {
-                              actionType: 'drawer',
-                              args: {
-                                drawer: {
-                                  type: 'drawer',
-                                  title: '模态子抽屉',
-                                  body: [
-                                    {
-                                      type: 'button',
-                                      label: '关闭指定抽屉(关闭父抽屉)',
-                                      onEvent: {
-                                        click: {
-                                          actions: [
-                                            {
-                                              actionType: 'closeDrawer',
-                                              componentId: 'drawer_1'
-                                            }
-                                          ]
+              drawer: {
+                type: 'drawer',
+                id: 'drawer_1',
+                title: '模态抽屉',
+                body: [
+                  {
+                    type: 'button',
+                    label: '打开子抽屉，然后关闭它的父亲',
+                    onEvent: {
+                      click: {
+                        actions: [
+                          {
+                            actionType: 'drawer',
+                            drawer: {
+                              type: 'drawer',
+                              title: '模态子抽屉',
+                              body: [
+                                {
+                                  type: 'button',
+                                  label: '关闭指定抽屉(关闭父抽屉)',
+                                  onEvent: {
+                                    click: {
+                                      actions: [
+                                        {
+                                          actionType: 'closeDrawer',
+                                          componentId: 'drawer_1'
                                         }
-                                      }
+                                      ]
                                     }
-                                  ]
+                                  }
                                 }
-                              }
+                              ]
                             }
-                          ]
-                        }
-                      }
-                    },
-                    {
-                      type: 'button',
-                      label: '关闭当前抽屉',
-                      className: 'ml-2',
-                      onEvent: {
-                        click: {
-                          actions: [
-                            {
-                              actionType: 'closeDrawer'
-                            }
-                          ]
-                        }
+                          }
+                        ]
                       }
                     }
-                  ]
-                }
+                  },
+                  {
+                    type: 'button',
+                    label: '关闭当前抽屉',
+                    className: 'ml-2',
+                    onEvent: {
+                      click: {
+                        actions: [
+                          {
+                            actionType: 'closeDrawer'
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
               }
             }
           ]
@@ -699,51 +677,13 @@ run action ajax
 | ----------- | -------- | ------ | --------------- |
 | componentId | `string` | -      | 指定抽屉组件 id |
 
-### 打开对话框
+### 打开确认弹窗
 
-通过配置`actionType: 'alert'`或`actionType: 'confirm'`打开不同对话框，该动作分别需实现 env.alert: (msg: string) => void 和 env.confirm: (msg: string, title?: string) => boolean | Promise&lt;boolean&gt;。
+通过配置`actionType: 'confirmDialog'`打开确认对话框。确认对话框弹出后，如果选择取消操作，将不会执行该动作后面的动作。如下面的例子，点击确认之后将弹出`toast`提示，点击取消则不会提示。
 
-#### 提示对话框
+**普通文本内容**
 
-```schema
-{
-  type: 'page',
-  data: {
-    msg: '去吃饭了'
-  },
-  body: [
-    {
-      type: 'button',
-      label: '提示对话框（模态）',
-      level: 'primary',
-      onEvent: {
-        click: {
-          actions: [
-            {
-              actionType: 'alert',
-              args: {
-                title: '提示',
-                msg: '<a href="http://www.baidu.com" target="_blank">${msg}~</a>'
-              }
-            }
-          ]
-        }
-      }
-    }
-  ]
-}
-```
-
-**动作属性（args）**
-
-> `< 1.8.0 及以下版本`，以下属性与 args 同级。
-
-| 属性名 | 类型     | 默认值   | 说明           |
-| ------ | -------- | -------- | -------------- |
-| title  | `string` | 系统提示 | 对话框标题     |
-| msg    | `string` | -        | 对话框提示内容 |
-
-#### 确认对话框
+动作需要实现 env.confirm: (msg: string, title?: string) => boolean | Promise&lt;boolean&gt;。
 
 ```schema
 {
@@ -762,9 +702,15 @@ run action ajax
           actions: [
             {
               actionType: 'confirmDialog',
-              args: {
+              dialog: {
                 title: '${title}',
                 msg: '<span style="color:red">${msg}</span>'
+              }
+            },
+            {
+              actionType: 'toast',
+              args: {
+                msg: '确认ok啦！'
               }
             }
           ]
@@ -775,14 +721,120 @@ run action ajax
 }
 ```
 
-**动作属性（args）**
+**自定义弹窗内容**
 
-> `< 1.8.0 及以下版本`，以下属性与 args 同级。
+可以通过`body`像配置弹窗一样配置确认弹窗的内容。
 
-| 属性名 | 类型     | 默认值 | 说明           |
-| ------ | -------- | ------ | -------------- |
-| title  | `string` | -      | 对话框标题     |
-| msg    | `string` | -      | 对话框提示内容 |
+```schema
+{
+  type: 'page',
+  data: {
+    title: '操作确认',
+    msg: '确认提交吗？'
+  },
+  body: [
+    {
+      type: 'button',
+      label: '自定义确认对话框（模态）',
+      level: 'primary',
+      onEvent: {
+        click: {
+          actions: [
+            {
+              actionType: 'confirmDialog',
+              dialog: {
+                type: 'dialog',
+                title: '${title}',
+                confirmText: '确认',
+                cancelText: '取消',
+                confirmBtnLevel: 'primary',
+                data: {
+                  '&': '$$',
+                  title: '确认'
+                },
+                body: [
+                  {
+                    "type": "form",
+                    "initApi": "/api/mock2/form/initData",
+                    "title": "编辑用户信息",
+                    "body": [
+                      {
+                        "type": "input-text",
+                        "name": "name",
+                        "label": "姓名"
+                      },
+                      {
+                        "type": "input-text",
+                        "name": "email",
+                        "label": "邮箱"
+                      },
+                      {
+                        type: 'tpl',
+                        tpl: '${msg}'
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              actionType: 'toast',
+              args: {
+                msg: '确认ok啦！'
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
+```
+
+**动作属性**
+
+| 属性名 | 类型                          | 默认值 | 说明                                                                |
+| ------ | ----------------------------- | ------ | ------------------------------------------------------------------- |
+| dialog | {msg:`string`}/`DialogObject` | -      | 指定弹框内容。自定义弹窗内容可参考[Dialog](../../components/dialog) |
+
+### 提示对话框
+
+通过配置`actionType: 'alert'`打开提示对话框，该对话框只有确认按钮。该动作需要实现 env.alert: (msg: string) => void。
+
+```schema
+{
+  type: 'page',
+  data: {
+    msg: '去吃饭了'
+  },
+  body: [
+    {
+      type: 'button',
+      label: '提示对话框（模态）',
+      level: 'primary',
+      onEvent: {
+        click: {
+          actions: [
+            {
+              actionType: 'alert',
+              dialog: {
+                title: '提示',
+                msg: '<a href="http://www.baidu.com" target="_blank">${msg}~</a>'
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
+```
+
+**动作属性**
+
+| 属性名 | 类型                             | 默认值                       | 说明       |
+| ------ | -------------------------------- | ---------------------------- | ---------- |
+| dialog | {title:`string`<br>msg:`string`} | {title: '系统提示', msg: ''} | 对话框配置 |
 
 ### 跳转链接
 
@@ -1378,11 +1430,11 @@ run action ajax
 | ----------- | -------- | ------ | --------------------- |
 | componentId | `string` | -      | 指定刷新的目标组件 id |
 
-### 显示与隐藏
+### 控制状态
 
 > 1.8.0 及以上版本
 
-通过配置`actionType: 'show'`或`'hidden'`实现对指定组件的显示和隐藏，且显隐动作的控制高于组件显隐属性的设置。
+通过配置`actionType: 'show'`或`'hidden'`或`'enabled'`或`'disabled'`或`'static'`或`'nostatic'`实现对指定组件的显示、隐藏、启用、禁用，仅支持实现了对应状态控制功能的数据`输入类`组件。
 
 ```schema
 {
@@ -1390,15 +1442,15 @@ run action ajax
   body: [
     {
       type: 'button',
-      label: '显示',
+      label: '显示表单',
       level: 'primary',
-      className: 'mr-2',
+      className: 'mr-2 mb-2',
       onEvent: {
         click: {
           actions: [
             {
               actionType: 'show',
-              componentId: 'input-text_001'
+              componentId: 'form_disable'
             }
           ]
         }
@@ -1406,51 +1458,24 @@ run action ajax
     },
     {
       type: 'button',
-      label: '隐藏',
+      label: '隐藏表单',
       level: 'primary',
+      className: 'mr-2 mb-2',
       onEvent: {
         click: {
           actions: [
             {
               actionType: 'hidden',
-              componentId: 'input-text_001'
+              componentId: 'form_disable'
             }
           ]
         }
       }
     },
     {
-      type: 'input-text',
-      label: '愿望',
-      className: 'mt-2',
-      id: 'input-text_001',
-      mode: 'horizontal',
-      hidden: true
-    }
-  ]
-}
-```
-
-**其他属性**
-
-| 属性名      | 类型     | 默认值 | 说明                        |
-| ----------- | -------- | ------ | --------------------------- |
-| componentId | `string` | -      | 指定显示或隐藏的目标组件 id |
-
-### 控制状态
-
-> 1.8.0 及以上版本
-
-通过配置`actionType: 'enabled'`或`actionType: 'disabled'`实现对指定组件的启用和禁用，仅支持实现了状态控制功能的数据`输入类`组件。
-
-```schema
-{
-  type: 'page',
-  body: [
-    {
       type: 'button',
       id: 'b_dis',
-      label: '禁用',
+      label: '禁用表单',
       level: 'primary',
       className: 'mr-2 mb-2',
       disabled: true,
@@ -1467,9 +1492,9 @@ run action ajax
     },
     {
       type: 'button',
-      label: '启用',
+      label: '启用表单',
       level: 'primary',
-      className: 'mb-2',
+      className: 'mr-2 mb-2',
       onEvent: {
         click: {
           actions: [
@@ -1482,22 +1507,56 @@ run action ajax
       }
     },
     {
+      type: 'button',
+      label: '静态展示表单',
+      level: 'primary',
+      className: 'mr-2 mb-2',
+      onEvent: {
+        click: {
+          actions: [
+            {
+              actionType: 'static',
+              componentId: 'form_disable'
+            }
+          ]
+        }
+      }
+    },
+    {
+      type: 'button',
+      label: '非静态展示表单',
+      level: 'primary',
+      className: 'mr-2 mb-2',
+      onEvent: {
+        click: {
+          actions: [
+            {
+              actionType: 'nonstatic',
+              componentId: 'form_disable'
+            }
+          ]
+        }
+      }
+    },
+    {
       type: 'form',
       id: 'form_disable',
       title: '表单',
       body: [
+        {
+          "type": "input-text",
+          "name": "text",
+          "label": "输入框",
+          "mode": "horizontal",
+          "value": "text"
+        },
         {
           type: 'group',
           body: [
             {
               type: 'button',
               className: 'ml-2',
-              label: '我的状态变了'
-            },
-            {
-              type: 'button',
-              className: 'ml-2',
-              label: '禁用上面的按钮',
+              label: '禁用【禁用】',
               level: 'primary',
               onEvent: {
                 click: {
@@ -1513,7 +1572,7 @@ run action ajax
             {
               type: 'button',
               className: 'ml-2',
-              label: '启用用上面的按钮',
+              label: '启用【禁用】',
               level: 'primary',
               onEvent: {
                 click: {
@@ -1536,9 +1595,9 @@ run action ajax
 
 **其他属性**
 
-| 属性名      | 类型     | 默认值 | 说明                        |
-| ----------- | -------- | ------ | --------------------------- |
-| componentId | `string` | -      | 指定启用或禁用的目标组件 id |
+| 属性名      | 类型     | 默认值 | 说明                                 |
+| ----------- | -------- | ------ | ------------------------------------ |
+| componentId | `string` | -      | 指定启用/禁用/显示/隐藏的目标组件 id |
 
 ### 更新数据
 
@@ -1625,9 +1684,11 @@ run action ajax
 
 **其他属性**
 
-| 属性名      | 类型     | 默认值 | 说明                  |
-| ----------- | -------- | ------ | --------------------- |
-| componentId | `string` | -      | 指定赋值的目标组件 id |
+| 属性名                       | 类型     | 默认值 | 说明                          |
+| ---------------------------- | -------- | ------ | ----------------------------- |
+| componentId 或 componentName | `string` | -      | 指定赋值的目标组件 id 或 name |
+
+> 备注：componentId 是全局定位指定的组件，而 componentName 是就近按照层级向上查找。
 
 ### 自定义 JS
 
@@ -1636,6 +1697,8 @@ run action ajax
 - context，渲染器上下文
 - doAction() 动作执行方法，用于调用任何 actionType 指定的动作
 - event，事件对象，可以调用 setData()、stopPropagation()、preventDefault()分别实现事件上下文设置、动作干预、事件干预，可以通过 event.data 获取事件上下文
+
+自定义函数签名： `script:(context,doAction,event)=>{}`
 
 ```schema
 {
@@ -1661,9 +1724,7 @@ run action ajax
 }
 ```
 
-**动作属性（args）**
-
-> `< 2.3.2 及以下版本`，以下属性与 args 同级。
+**动作属性**
 
 | 属性名 | 类型                | 默认值 | 说明                                                                                                                                            |
 | ------ | ------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1789,11 +1850,11 @@ run action ajax
 
 有时在执行自定义 JS 的时候，希望该过程中产生的数据可以分享给后面的动作使用，此时可以通过`event.setData()`来实现事件上下文的设置，这样后面动作都可以通过事件上下文来获取共享的数据。
 
-> 注意：直接调用`event.setData()`将修改事件的原有上下文，如果不希望覆盖可以通过`event.setData({...event.data, {xxx: xxx}})`来进行数据的合并。
+> 注意：直接调用`event.setData()`将修改事件的原有上下文，如果不希望覆盖可以通过`event.setData({...event.data, ...{xxx: xxx}})`来进行数据的合并。
 
-## 触发其他组件的动作
+## 触发组件的动作
 
-通过配置`componentId`来触发指定组件的动作，组件动作配置通过`args`传入`(> 1.9.0 及以上版本)`，动作参数请查看对应的组件的[动作表](../../components/form/index#动作表)，更多示例请查看[组件事件动作示例](../../../examples/event/form)。
+通过配置`componentId`或`componentName`来触发指定组件的动作（不配置将调用当前组件自己的动作），组件动作配置通过`args`传入`(> 1.9.0 及以上版本)`，动作参数请查看对应的组件的[动作表](../../components/form/index#动作表)，更多示例请查看[组件事件动作示例](../../../examples/event/form)。
 
 ```schema
 {

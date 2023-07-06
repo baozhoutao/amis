@@ -11,10 +11,11 @@ import {defaultValue, getSchemaTpl} from 'amis-editor-core';
 import {BUTTON_DEFAULT_ACTION} from '../component/BaseControl';
 import {getEventControlConfig} from '../renderer/event-control/helper';
 import {RendererPluginAction, RendererPluginEvent} from 'amis-editor-core';
-import type {SchemaObject} from 'amis/lib/Schema';
+import type {SchemaObject} from 'amis';
 import {getOldActionSchema} from '../renderer/event-control/helper';
 
 export class ButtonPlugin extends BasePlugin {
+  static id = 'ButtonPlugin';
   static scene = ['layout'];
   // 关联渲染器名字
   rendererName = 'button';
@@ -54,9 +55,15 @@ export class ButtonPlugin extends BasePlugin {
         {
           type: 'object',
           properties: {
-            nativeEvent: {
+            context: {
               type: 'object',
-              title: '鼠标事件对象'
+              title: '上下文',
+              properties: {
+                nativeEvent: {
+                  type: 'object',
+                  title: '鼠标事件对象'
+                }
+              }
             }
           }
         }
@@ -70,9 +77,15 @@ export class ButtonPlugin extends BasePlugin {
         {
           type: 'object',
           properties: {
-            nativeEvent: {
+            context: {
               type: 'object',
-              title: '鼠标事件对象'
+              title: '上下文',
+              properties: {
+                nativeEvent: {
+                  type: 'object',
+                  title: '鼠标事件对象'
+                }
+              }
             }
           }
         }
@@ -86,9 +99,15 @@ export class ButtonPlugin extends BasePlugin {
         {
           type: 'object',
           properties: {
-            nativeEvent: {
+            context: {
               type: 'object',
-              title: '鼠标事件对象'
+              title: '上下文',
+              properties: {
+                nativeEvent: {
+                  type: 'object',
+                  title: '鼠标事件对象'
+                }
+              }
             }
           }
         }
@@ -130,6 +149,7 @@ export class ButtonPlugin extends BasePlugin {
           name: `themeCss.className.background:${state}`,
           labelMode: 'input',
           needGradient: true,
+          needImage: true,
           visibleOn: visibleOn,
           editorThemePath: `button1.type.\${level}.${state}.body.bg-color`
         }),
@@ -147,6 +167,12 @@ export class ButtonPlugin extends BasePlugin {
           name: `themeCss.className.radius:${state}`,
           visibleOn: visibleOn,
           editorThemePath: `button1.size.\${size}.body.border`
+        }),
+        getSchemaTpl('theme:size', {
+          label: '图标尺寸',
+          name: `themeCss.iconClassName.iconSize:${state}`,
+          visibleOn: visibleOn,
+          editorThemePath: `button1.size.\${size}.body.icon-size`
         })
       ];
     };

@@ -10,9 +10,10 @@ import {
 } from 'amis-editor-core';
 import {defaultValue, getSchemaTpl} from 'amis-editor-core';
 import {diff} from 'amis-editor-core';
-import type {SchemaCollection} from 'amis/lib/Schema';
+import type {SchemaCollection} from 'amis';
 
 export class ActionPlugin extends BasePlugin {
+  static id = 'ActionPlugin';
   panelTitle = '按钮';
   rendererName = 'action';
   name = '行为按钮';

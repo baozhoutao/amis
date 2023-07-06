@@ -356,7 +356,6 @@ exports[`Renderer:table 1`] = `
     </div>
     <div
       class="cxd-Table-fixedTop"
-      style="top: 0px; width: 0px;"
     >
       <div
         class="cxd-Table-heading"
@@ -371,20 +370,16 @@ exports[`Renderer:table 1`] = `
       />
       <div
         class="cxd-Table-wrapper"
-        style="width: 0px;"
       >
         <table
           class="cxd-Table-table"
-          style="width: 0px; table-layout: auto; transform: translateX(-0px);"
         >
           <colgroup>
             <col
               data-index="3"
-              width="0"
             />
             <col
               data-index="4"
-              width="0"
             />
           </colgroup>
           <thead>
@@ -392,7 +387,6 @@ exports[`Renderer:table 1`] = `
               <th
                 class=""
                 data-index="3"
-                style="width: 0px; height: 0px;"
               >
                 <div
                   class="cxd-TableCell--title"
@@ -412,7 +406,6 @@ exports[`Renderer:table 1`] = `
               <th
                 class=""
                 data-index="4"
-                style="width: 0px; height: 0px;"
               >
                 <div
                   class="cxd-TableCell--title"
@@ -434,10 +427,6 @@ exports[`Renderer:table 1`] = `
         </table>
       </div>
     </div>
-    <div
-      class="cxd-Table-fixedTop-shadow"
-      style=""
-    />
   </div>
 </div>
 `;
@@ -822,7 +811,6 @@ exports[`Renderer:table align 1`] = `
     </div>
     <div
       class="cxd-Table-fixedTop"
-      style="top: 0px; width: 0px;"
     >
       <div
         class="cxd-Table-heading"
@@ -837,20 +825,16 @@ exports[`Renderer:table align 1`] = `
       />
       <div
         class="cxd-Table-wrapper"
-        style="width: 0px;"
       >
         <table
           class="cxd-Table-table"
-          style="width: 0px; table-layout: auto; transform: translateX(-0px);"
         >
           <colgroup>
             <col
               data-index="3"
-              width="0"
             />
             <col
               data-index="4"
-              width="0"
             />
           </colgroup>
           <thead>
@@ -858,7 +842,6 @@ exports[`Renderer:table align 1`] = `
               <th
                 class=""
                 data-index="3"
-                style="width: 0px; height: 0px;"
               >
                 <div
                   class="cxd-TableCell--title"
@@ -878,7 +861,7 @@ exports[`Renderer:table align 1`] = `
               <th
                 class=""
                 data-index="4"
-                style="text-align: right; width: 0px; height: 0px;"
+                style="text-align: right;"
               >
                 <div
                   class="cxd-TableCell--title"
@@ -893,10 +876,6 @@ exports[`Renderer:table align 1`] = `
         </table>
       </div>
     </div>
-    <div
-      class="cxd-Table-fixedTop-shadow"
-      style=""
-    />
   </div>
 </div>
 `;
@@ -1477,7 +1456,6 @@ exports[`Renderer:table children 1`] = `
               </div>
               <div
                 class="cxd-Table-fixedTop"
-                style="top: 0px; width: 0px;"
               >
                 <div
                   class="cxd-Table-fixedLeft"
@@ -1487,40 +1465,31 @@ exports[`Renderer:table children 1`] = `
                 />
                 <div
                   class="cxd-Table-wrapper"
-                  style="width: 0px;"
                 >
                   <table
                     class="cxd-Table-table"
-                    style="width: 0px; table-layout: auto; transform: translateX(-0px);"
                   >
                     <colgroup>
                       <col
                         data-index="2"
-                        width="0"
                       />
                       <col
                         data-index="3"
-                        width="0"
                       />
                       <col
                         data-index="4"
-                        width="0"
                       />
                       <col
                         data-index="5"
-                        width="0"
                       />
                       <col
                         data-index="6"
-                        width="0"
                       />
                       <col
                         data-index="7"
-                        width="0"
                       />
                       <col
                         data-index="8"
-                        width="0"
                       />
                     </colgroup>
                     <thead>
@@ -1528,7 +1497,6 @@ exports[`Renderer:table children 1`] = `
                         <th
                           class="cxd-Table-expandCell"
                           data-index="2"
-                          style="width: 0px; height: 0px;"
                         >
                           <a
                             class="cxd-Table-expandBtn"
@@ -1542,7 +1510,6 @@ exports[`Renderer:table children 1`] = `
                         <th
                           class=""
                           data-index="3"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -1562,7 +1529,6 @@ exports[`Renderer:table children 1`] = `
                         <th
                           class=""
                           data-index="4"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -1582,7 +1548,6 @@ exports[`Renderer:table children 1`] = `
                         <th
                           class=""
                           data-index="5"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -1602,7 +1567,6 @@ exports[`Renderer:table children 1`] = `
                         <th
                           class=""
                           data-index="6"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -1622,7 +1586,6 @@ exports[`Renderer:table children 1`] = `
                         <th
                           class=""
                           data-index="7"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -1642,7 +1605,6 @@ exports[`Renderer:table children 1`] = `
                         <th
                           class=""
                           data-index="8"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -1664,10 +1626,6 @@ exports[`Renderer:table children 1`] = `
                   </table>
                 </div>
               </div>
-              <div
-                class="cxd-Table-fixedTop-shadow"
-                style=""
-              />
             </div>
           </div>
         </div>
@@ -2033,7 +1991,6 @@ exports[`Renderer:table classNameExpr 1`] = `
     </div>
     <div
       class="cxd-Table-fixedTop"
-      style="top: 0px; width: 0px;"
     >
       <div
         class="cxd-Table-heading"
@@ -2048,20 +2005,16 @@ exports[`Renderer:table classNameExpr 1`] = `
       />
       <div
         class="cxd-Table-wrapper"
-        style="width: 0px;"
       >
         <table
           class="cxd-Table-table"
-          style="width: 0px; table-layout: auto; transform: translateX(-0px);"
         >
           <colgroup>
             <col
               data-index="3"
-              width="0"
             />
             <col
               data-index="4"
-              width="0"
             />
           </colgroup>
           <thead>
@@ -2069,7 +2022,6 @@ exports[`Renderer:table classNameExpr 1`] = `
               <th
                 class=""
                 data-index="3"
-                style="width: 0px; height: 0px;"
               >
                 <div
                   class="cxd-TableCell--title"
@@ -2089,7 +2041,6 @@ exports[`Renderer:table classNameExpr 1`] = `
               <th
                 class=""
                 data-index="4"
-                style="width: 0px; height: 0px;"
               >
                 <div
                   class="cxd-TableCell--title"
@@ -2111,10 +2062,6 @@ exports[`Renderer:table classNameExpr 1`] = `
         </table>
       </div>
     </div>
-    <div
-      class="cxd-Table-fixedTop-shadow"
-      style=""
-    />
   </div>
 </div>
 `;
@@ -2140,7 +2087,6 @@ exports[`Renderer:table column head style className 1`] = `
       >
         <table
           class="cxd-Table-table cxd-Table-table tableClassName"
-          style="width: 0px; table-layout: auto;"
         >
           <thead>
             <tr
@@ -2149,7 +2095,6 @@ exports[`Renderer:table column head style className 1`] = `
               <th
                 class=""
                 data-index="4"
-                style="width: 0px; height: 0px;"
               >
                 <div
                   class="cxd-TableCell--title"
@@ -2659,7 +2604,6 @@ exports[`Renderer:table column head style className 1`] = `
     </div>
     <div
       class="cxd-Table-fixedTop"
-      style="top: 0px; width: 0px;"
     >
       <div
         class="cxd-Table-heading"
@@ -2674,7 +2618,6 @@ exports[`Renderer:table column head style className 1`] = `
       >
         <table
           class="cxd-Table-table cxd-Table-table tableClassName"
-          style="width: 0px; table-layout: auto;"
         >
           <thead>
             <tr
@@ -2683,7 +2626,6 @@ exports[`Renderer:table column head style className 1`] = `
               <th
                 class=""
                 data-index="4"
-                style="width: 0px; height: 0px;"
               >
                 <div
                   class="cxd-TableCell--title"
@@ -2706,20 +2648,16 @@ exports[`Renderer:table column head style className 1`] = `
       </div>
       <div
         class="cxd-Table-wrapper"
-        style="width: 0px;"
       >
         <table
           class="cxd-Table-table tableClassName"
-          style="width: 0px; table-layout: auto; transform: translateX(-0px);"
         >
           <colgroup>
             <col
               data-index="3"
-              width="0"
             />
             <col
               data-index="4"
-              width="0"
             />
           </colgroup>
           <thead>
@@ -2727,7 +2665,6 @@ exports[`Renderer:table column head style className 1`] = `
               <th
                 class=""
                 data-index="3"
-                style="width: 0px; height: 0px;"
               >
                 <div
                   class="cxd-TableCell--title"
@@ -2747,7 +2684,6 @@ exports[`Renderer:table column head style className 1`] = `
               <th
                 class=""
                 data-index="4"
-                style="width: 0px; height: 0px;"
               >
                 <div
                   class="cxd-TableCell--title"
@@ -2769,10 +2705,6 @@ exports[`Renderer:table column head style className 1`] = `
         </table>
       </div>
     </div>
-    <div
-      class="cxd-Table-fixedTop-shadow"
-      style=""
-    />
   </div>
 </div>
 `;
@@ -3326,7 +3258,6 @@ exports[`Renderer:table combine Renderer:table combineNum only 1`] = `
               </div>
               <div
                 class="cxd-Table-fixedTop"
-                style="top: 0px; width: 0px;"
               >
                 <div
                   class="cxd-Table-fixedLeft"
@@ -3336,32 +3267,25 @@ exports[`Renderer:table combine Renderer:table combineNum only 1`] = `
                 />
                 <div
                   class="cxd-Table-wrapper"
-                  style="width: 0px;"
                 >
                   <table
                     class="cxd-Table-table cxd-Table-table--withCombine"
-                    style="width: 0px; table-layout: auto; transform: translateX(-0px);"
                   >
                     <colgroup>
                       <col
                         data-index="3"
-                        width="0"
                       />
                       <col
                         data-index="4"
-                        width="0"
                       />
                       <col
                         data-index="5"
-                        width="0"
                       />
                       <col
                         data-index="6"
-                        width="0"
                       />
                       <col
                         data-index="7"
-                        width="0"
                       />
                     </colgroup>
                     <thead>
@@ -3369,7 +3293,6 @@ exports[`Renderer:table combine Renderer:table combineNum only 1`] = `
                         <th
                           class=""
                           data-index="3"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -3389,7 +3312,6 @@ exports[`Renderer:table combine Renderer:table combineNum only 1`] = `
                         <th
                           class=""
                           data-index="4"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -3409,7 +3331,6 @@ exports[`Renderer:table combine Renderer:table combineNum only 1`] = `
                         <th
                           class=""
                           data-index="5"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -3429,7 +3350,6 @@ exports[`Renderer:table combine Renderer:table combineNum only 1`] = `
                         <th
                           class=""
                           data-index="6"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -3449,7 +3369,6 @@ exports[`Renderer:table combine Renderer:table combineNum only 1`] = `
                         <th
                           class=""
                           data-index="7"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -3471,10 +3390,6 @@ exports[`Renderer:table combine Renderer:table combineNum only 1`] = `
                   </table>
                 </div>
               </div>
-              <div
-                class="cxd-Table-fixedTop-shadow"
-                style=""
-              />
             </div>
           </div>
         </div>
@@ -4103,7 +4018,6 @@ exports[`Renderer:table combine Renderer:table combineNum with fromIndex 1`] = `
               </div>
               <div
                 class="cxd-Table-fixedTop"
-                style="top: 0px; width: 0px;"
               >
                 <div
                   class="cxd-Table-fixedLeft"
@@ -4113,32 +4027,25 @@ exports[`Renderer:table combine Renderer:table combineNum with fromIndex 1`] = `
                 />
                 <div
                   class="cxd-Table-wrapper"
-                  style="width: 0px;"
                 >
                   <table
                     class="cxd-Table-table cxd-Table-table--withCombine"
-                    style="width: 0px; table-layout: auto; transform: translateX(-0px);"
                   >
                     <colgroup>
                       <col
                         data-index="3"
-                        width="0"
                       />
                       <col
                         data-index="4"
-                        width="0"
                       />
                       <col
                         data-index="5"
-                        width="0"
                       />
                       <col
                         data-index="6"
-                        width="0"
                       />
                       <col
                         data-index="7"
-                        width="0"
                       />
                     </colgroup>
                     <thead>
@@ -4146,7 +4053,6 @@ exports[`Renderer:table combine Renderer:table combineNum with fromIndex 1`] = `
                         <th
                           class=""
                           data-index="3"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -4166,7 +4072,6 @@ exports[`Renderer:table combine Renderer:table combineNum with fromIndex 1`] = `
                         <th
                           class=""
                           data-index="4"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -4186,7 +4091,6 @@ exports[`Renderer:table combine Renderer:table combineNum with fromIndex 1`] = `
                         <th
                           class=""
                           data-index="5"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -4206,7 +4110,6 @@ exports[`Renderer:table combine Renderer:table combineNum with fromIndex 1`] = `
                         <th
                           class=""
                           data-index="6"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -4226,7 +4129,6 @@ exports[`Renderer:table combine Renderer:table combineNum with fromIndex 1`] = `
                         <th
                           class=""
                           data-index="7"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -4248,10 +4150,6 @@ exports[`Renderer:table combine Renderer:table combineNum with fromIndex 1`] = `
                   </table>
                 </div>
               </div>
-              <div
-                class="cxd-Table-fixedTop-shadow"
-                style=""
-              />
             </div>
           </div>
         </div>
@@ -5011,7 +4909,6 @@ exports[`Renderer:table groupName-default 1`] = `
               </div>
               <div
                 class="cxd-Table-fixedTop"
-                style="top: 0px; width: 0px;"
               >
                 <div
                   class="cxd-Table-toolbar cxd-Table-headToolbar"
@@ -5049,32 +4946,25 @@ exports[`Renderer:table groupName-default 1`] = `
                 />
                 <div
                   class="cxd-Table-wrapper"
-                  style="width: 0px;"
                 >
                   <table
                     class="cxd-Table-table"
-                    style="width: 0px; table-layout: auto; transform: translateX(-0px);"
                   >
                     <colgroup>
                       <col
                         data-index="3"
-                        width="0"
                       />
                       <col
                         data-index="4"
-                        width="0"
                       />
                       <col
                         data-index="5"
-                        width="0"
                       />
                       <col
                         data-index="6"
-                        width="0"
                       />
                       <col
                         data-index="8"
-                        width="0"
                       />
                     </colgroup>
                     <thead>
@@ -5083,7 +4973,6 @@ exports[`Renderer:table groupName-default 1`] = `
                           colspan="2"
                           data-index="3"
                           rowspan="1"
-                          style="width: 0px; height: 0px;"
                         >
                           <span
                             class="cxd-TplField"
@@ -5097,7 +4986,6 @@ exports[`Renderer:table groupName-default 1`] = `
                           colspan="3"
                           data-index="5"
                           rowspan="1"
-                          style="width: 0px; height: 0px;"
                         >
                           <span
                             class="cxd-TplField"
@@ -5112,7 +5000,6 @@ exports[`Renderer:table groupName-default 1`] = `
                         <th
                           class=""
                           data-index="3"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -5132,7 +5019,6 @@ exports[`Renderer:table groupName-default 1`] = `
                         <th
                           class=""
                           data-index="4"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -5152,7 +5038,6 @@ exports[`Renderer:table groupName-default 1`] = `
                         <th
                           class=""
                           data-index="5"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -5172,7 +5057,6 @@ exports[`Renderer:table groupName-default 1`] = `
                         <th
                           class=""
                           data-index="6"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -5192,7 +5076,6 @@ exports[`Renderer:table groupName-default 1`] = `
                         <th
                           class=""
                           data-index="8"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -5214,10 +5097,6 @@ exports[`Renderer:table groupName-default 1`] = `
                   </table>
                 </div>
               </div>
-              <div
-                class="cxd-Table-fixedTop-shadow"
-                style=""
-              />
             </div>
           </div>
         </div>
@@ -5981,7 +5860,6 @@ exports[`Renderer:table groupName-middleNoGroupName 1`] = `
               </div>
               <div
                 class="cxd-Table-fixedTop"
-                style="top: 0px; width: 0px;"
               >
                 <div
                   class="cxd-Table-toolbar cxd-Table-headToolbar"
@@ -6019,32 +5897,25 @@ exports[`Renderer:table groupName-middleNoGroupName 1`] = `
                 />
                 <div
                   class="cxd-Table-wrapper"
-                  style="width: 0px;"
                 >
                   <table
                     class="cxd-Table-table"
-                    style="width: 0px; table-layout: auto; transform: translateX(-0px);"
                   >
                     <colgroup>
                       <col
                         data-index="3"
-                        width="0"
                       />
                       <col
                         data-index="4"
-                        width="undefined"
                       />
                       <col
                         data-index="5"
-                        width="undefined"
                       />
                       <col
                         data-index="6"
-                        width="0"
                       />
                       <col
                         data-index="8"
-                        width="0"
                       />
                     </colgroup>
                     <thead>
@@ -6053,7 +5924,6 @@ exports[`Renderer:table groupName-middleNoGroupName 1`] = `
                           colspan="1"
                           data-index="3"
                           rowspan="1"
-                          style="width: 0px; height: 0px;"
                         >
                           <span
                             class="cxd-TplField"
@@ -6064,38 +5934,53 @@ exports[`Renderer:table groupName-middleNoGroupName 1`] = `
                           </span>
                         </th>
                         <th
+                          class=""
                           colspan="1"
                           data-index="4"
+                          label="Grade"
                           rowspan="2"
-                          style="width: 0px; height: 0px;"
                         >
-                          <span
-                            class="cxd-TplField"
+                          <div
+                            class="cxd-TableCell--title"
                           >
-                            <span>
-                              Grade
+                            <span
+                              class="cxd-TplField"
+                            >
+                              <span>
+                                Grade
+                              </span>
                             </span>
-                          </span>
+                          </div>
+                          <div
+                            class="cxd-Table-content-colDragLine"
+                          />
                         </th>
                         <th
+                          class=""
                           colspan="1"
                           data-index="5"
+                          label="Version"
                           rowspan="2"
-                          style="width: 0px; height: 0px;"
                         >
-                          <span
-                            class="cxd-TplField"
+                          <div
+                            class="cxd-TableCell--title"
                           >
-                            <span>
-                              Version
+                            <span
+                              class="cxd-TplField"
+                            >
+                              <span>
+                                Version
+                              </span>
                             </span>
-                          </span>
+                          </div>
+                          <div
+                            class="cxd-Table-content-colDragLine"
+                          />
                         </th>
                         <th
                           colspan="2"
                           data-index="6"
                           rowspan="1"
-                          style="width: 0px; height: 0px;"
                         >
                           <span
                             class="cxd-TplField"
@@ -6110,7 +5995,6 @@ exports[`Renderer:table groupName-middleNoGroupName 1`] = `
                         <th
                           class=""
                           data-index="3"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -6130,7 +6014,6 @@ exports[`Renderer:table groupName-middleNoGroupName 1`] = `
                         <th
                           class=""
                           data-index="6"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -6150,7 +6033,6 @@ exports[`Renderer:table groupName-middleNoGroupName 1`] = `
                         <th
                           class=""
                           data-index="8"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -6172,10 +6054,6 @@ exports[`Renderer:table groupName-middleNoGroupName 1`] = `
                   </table>
                 </div>
               </div>
-              <div
-                class="cxd-Table-fixedTop-shadow"
-                style=""
-              />
             </div>
           </div>
         </div>
@@ -6928,7 +6806,6 @@ exports[`Renderer:table groupName-startNoGroupName 1`] = `
               </div>
               <div
                 class="cxd-Table-fixedTop"
-                style="top: 0px; width: 0px;"
               >
                 <div
                   class="cxd-Table-toolbar cxd-Table-headToolbar"
@@ -6966,83 +6843,99 @@ exports[`Renderer:table groupName-startNoGroupName 1`] = `
                 />
                 <div
                   class="cxd-Table-wrapper"
-                  style="width: 0px;"
                 >
                   <table
                     class="cxd-Table-table"
-                    style="width: 0px; table-layout: auto; transform: translateX(-0px);"
                   >
                     <colgroup>
                       <col
                         data-index="3"
-                        width="undefined"
                       />
                       <col
                         data-index="4"
-                        width="undefined"
                       />
                       <col
                         data-index="5"
-                        width="undefined"
                       />
                       <col
                         data-index="6"
-                        width="0"
                       />
                       <col
                         data-index="8"
-                        width="0"
                       />
                     </colgroup>
                     <thead>
                       <tr>
                         <th
+                          class=""
                           colspan="1"
                           data-index="3"
+                          label="Engine"
                           rowspan="2"
-                          style="width: 0px; height: 0px;"
                         >
-                          <span
-                            class="cxd-TplField"
+                          <div
+                            class="cxd-TableCell--title"
                           >
-                            <span>
-                              Engine
+                            <span
+                              class="cxd-TplField"
+                            >
+                              <span>
+                                Engine
+                              </span>
                             </span>
-                          </span>
+                          </div>
+                          <div
+                            class="cxd-Table-content-colDragLine"
+                          />
                         </th>
                         <th
+                          class=""
                           colspan="1"
                           data-index="4"
+                          label="Grade"
                           rowspan="2"
-                          style="width: 0px; height: 0px;"
                         >
-                          <span
-                            class="cxd-TplField"
+                          <div
+                            class="cxd-TableCell--title"
                           >
-                            <span>
-                              Grade
+                            <span
+                              class="cxd-TplField"
+                            >
+                              <span>
+                                Grade
+                              </span>
                             </span>
-                          </span>
+                          </div>
+                          <div
+                            class="cxd-Table-content-colDragLine"
+                          />
                         </th>
                         <th
+                          class=""
                           colspan="1"
                           data-index="5"
+                          label="Version"
                           rowspan="2"
-                          style="width: 0px; height: 0px;"
                         >
-                          <span
-                            class="cxd-TplField"
+                          <div
+                            class="cxd-TableCell--title"
                           >
-                            <span>
-                              Version
+                            <span
+                              class="cxd-TplField"
+                            >
+                              <span>
+                                Version
+                              </span>
                             </span>
-                          </span>
+                          </div>
+                          <div
+                            class="cxd-Table-content-colDragLine"
+                          />
                         </th>
                         <th
                           colspan="2"
                           data-index="6"
                           rowspan="1"
-                          style="width: 0px; height: 0px;"
                         >
                           <span
                             class="cxd-TplField"
@@ -7057,7 +6950,6 @@ exports[`Renderer:table groupName-startNoGroupName 1`] = `
                         <th
                           class=""
                           data-index="6"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -7077,7 +6969,6 @@ exports[`Renderer:table groupName-startNoGroupName 1`] = `
                         <th
                           class=""
                           data-index="8"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -7099,10 +6990,6 @@ exports[`Renderer:table groupName-startNoGroupName 1`] = `
                   </table>
                 </div>
               </div>
-              <div
-                class="cxd-Table-fixedTop-shadow"
-                style=""
-              />
             </div>
           </div>
         </div>
@@ -7862,7 +7749,6 @@ exports[`Renderer:table groupName-withTpl 1`] = `
               </div>
               <div
                 class="cxd-Table-fixedTop"
-                style="top: 0px; width: 0px;"
               >
                 <div
                   class="cxd-Table-toolbar cxd-Table-headToolbar"
@@ -7900,32 +7786,25 @@ exports[`Renderer:table groupName-withTpl 1`] = `
                 />
                 <div
                   class="cxd-Table-wrapper"
-                  style="width: 0px;"
                 >
                   <table
                     class="cxd-Table-table"
-                    style="width: 0px; table-layout: auto; transform: translateX(-0px);"
                   >
                     <colgroup>
                       <col
                         data-index="3"
-                        width="0"
                       />
                       <col
                         data-index="4"
-                        width="0"
                       />
                       <col
                         data-index="5"
-                        width="0"
                       />
                       <col
                         data-index="6"
-                        width="0"
                       />
                       <col
                         data-index="8"
-                        width="0"
                       />
                     </colgroup>
                     <thead>
@@ -7934,7 +7813,6 @@ exports[`Renderer:table groupName-withTpl 1`] = `
                           colspan="2"
                           data-index="3"
                           rowspan="1"
-                          style="width: 0px; height: 0px;"
                         >
                           <span
                             class="cxd-TplField"
@@ -7948,7 +7826,6 @@ exports[`Renderer:table groupName-withTpl 1`] = `
                           colspan="3"
                           data-index="5"
                           rowspan="1"
-                          style="width: 0px; height: 0px;"
                         >
                           <span
                             class="cxd-TplField"
@@ -7963,7 +7840,6 @@ exports[`Renderer:table groupName-withTpl 1`] = `
                         <th
                           class=""
                           data-index="3"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -7983,7 +7859,6 @@ exports[`Renderer:table groupName-withTpl 1`] = `
                         <th
                           class=""
                           data-index="4"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -8003,7 +7878,6 @@ exports[`Renderer:table groupName-withTpl 1`] = `
                         <th
                           class=""
                           data-index="5"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -8023,7 +7897,6 @@ exports[`Renderer:table groupName-withTpl 1`] = `
                         <th
                           class=""
                           data-index="6"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -8043,7 +7916,6 @@ exports[`Renderer:table groupName-withTpl 1`] = `
                         <th
                           class=""
                           data-index="8"
-                          style="width: 0px; height: 0px;"
                         >
                           <div
                             class="cxd-TableCell--title"
@@ -8065,10 +7937,6 @@ exports[`Renderer:table groupName-withTpl 1`] = `
                   </table>
                 </div>
               </div>
-              <div
-                class="cxd-Table-fixedTop-shadow"
-                style=""
-              />
             </div>
           </div>
         </div>
@@ -8099,7 +7967,6 @@ exports[`Renderer:table isHead fixed 1`] = `
       >
         <table
           class="cxd-Table-table cxd-Table-table"
-          style="width: 0px; table-layout: auto;"
         >
           <thead>
             <tr
@@ -8108,7 +7975,6 @@ exports[`Renderer:table isHead fixed 1`] = `
               <th
                 class=""
                 data-index="4"
-                style="width: 0px; height: 0px;"
               >
                 <div
                   class="cxd-TableCell--title"
@@ -8618,7 +8484,6 @@ exports[`Renderer:table isHead fixed 1`] = `
     </div>
     <div
       class="cxd-Table-fixedTop"
-      style="top: 0px; width: 0px;"
     >
       <div
         class="cxd-Table-heading"
@@ -8633,7 +8498,6 @@ exports[`Renderer:table isHead fixed 1`] = `
       >
         <table
           class="cxd-Table-table cxd-Table-table"
-          style="width: 0px; table-layout: auto;"
         >
           <thead>
             <tr
@@ -8642,7 +8506,6 @@ exports[`Renderer:table isHead fixed 1`] = `
               <th
                 class=""
                 data-index="4"
-                style="width: 0px; height: 0px;"
               >
                 <div
                   class="cxd-TableCell--title"
@@ -8665,20 +8528,16 @@ exports[`Renderer:table isHead fixed 1`] = `
       </div>
       <div
         class="cxd-Table-wrapper"
-        style="width: 0px;"
       >
         <table
           class="cxd-Table-table"
-          style="width: 0px; table-layout: auto; transform: translateX(-0px);"
         >
           <colgroup>
             <col
               data-index="3"
-              width="0"
             />
             <col
               data-index="4"
-              width="0"
             />
           </colgroup>
           <thead>
@@ -8686,7 +8545,6 @@ exports[`Renderer:table isHead fixed 1`] = `
               <th
                 class=""
                 data-index="3"
-                style="width: 0px; height: 0px;"
               >
                 <div
                   class="cxd-TableCell--title"
@@ -8706,7 +8564,6 @@ exports[`Renderer:table isHead fixed 1`] = `
               <th
                 class=""
                 data-index="4"
-                style="width: 0px; height: 0px;"
               >
                 <div
                   class="cxd-TableCell--title"
@@ -8728,10 +8585,6 @@ exports[`Renderer:table isHead fixed 1`] = `
         </table>
       </div>
     </div>
-    <div
-      class="cxd-Table-fixedTop-shadow"
-      style=""
-    />
   </div>
 </div>
 `;

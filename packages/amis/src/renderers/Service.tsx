@@ -1,7 +1,7 @@
 import React from 'react';
 import extend from 'lodash/extend';
 import cloneDeep from 'lodash/cloneDeep';
-import {Renderer, RendererProps} from 'amis-core';
+import {Renderer, RendererProps, filterTarget} from 'amis-core';
 import {ServiceStore, IServiceStore} from 'amis-core';
 import {Api, RendererData, ActionObject} from 'amis-core';
 import {filter, evalExpression} from 'amis-core';
@@ -35,6 +35,7 @@ import {IIRendererStore} from 'amis-core';
 
 import type {ListenerAction} from 'amis-core';
 import type {ScopedComponentType} from 'amis-core';
+import isPlainObject from 'lodash/isPlainObject';
 
 export const eventTypes = [
   /* 初始化时执行，默认 */
@@ -59,7 +60,7 @@ export type ComposedDataProvider = DataProvider | DataProviderCollection;
 
 /**
  * Service 服务类控件。
- * 文档：https://baidu.gitee.io/amis/docs/components/service
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/service
  */
 export interface ServiceSchema extends BaseSchema, SpinnerExtraProps {
   /**
@@ -341,14 +342,16 @@ export default class Service extends React.Component<ServiceProps> {
    */
   @autobind
   initDataProviders(provider?: ComposedDataProvider) {
-    const dataProvider = cloneDeep(provider);
+    const dataProvider = isPlainObject(provider)
+      ? cloneDeep(provider)
+      : provider;
     let fnCollection: DataProviderCollection = {};
 
     if (dataProvider) {
-      if (typeof dataProvider === 'object' && isObject(dataProvider)) {
+      if (isPlainObject(dataProvider)) {
         Object.keys(dataProvider).forEach((event: ProviderEventType) => {
           const normalizedProvider = this.normalizeProvider(
-            dataProvider[event],
+            (dataProvider as DataProviderCollection)[event],
             event
           );
 
@@ -512,16 +515,23 @@ export default class Service extends React.Component<ServiceProps> {
     const data = result?.hasOwnProperty('ok') ? result.data ?? {} : result;
     const {onBulkChange, dispatchEvent, store} = this.props;
 
-    dispatchEvent?.('fetchInited', {
-      ...data,
-      __response: {msg: store.msg, error: store.error}
-    });
+    dispatchEvent?.(
+      'fetchInited',
+      createObject(this.props.data, {
+        ...data,
+        __response: {msg: store.msg, error: store.error}, // 保留，兼容历史
+        responseData: data,
+        responseStatus:
+          result?.status === undefined ? (store.error ? 1 : 0) : result?.status,
+        responseMsg: store.msg
+      })
+    );
 
     if (!isEmpty(data) && onBulkChange) {
       onBulkChange(data);
     }
 
-    this.initInterval(data);
+    result?.ok && this.initInterval(data);
   }
 
   afterSchemaFetch(schema: any) {
@@ -529,7 +539,11 @@ export default class Service extends React.Component<ServiceProps> {
 
     dispatchEvent?.('fetchSchemaInited', {
       ...schema,
-      __response: {msg: store.msg, error: store.error}
+      __response: {msg: store.msg, error: store.error}, // 保留，兼容历史
+      responseData: schema,
+      responseStatus:
+        schema?.status === undefined ? (store.error ? 1 : 0) : schema?.status,
+      responseMsg: store.msg
     });
 
     if (formStore && schema?.data && onBulkChange) {
@@ -622,9 +636,32 @@ export default class Service extends React.Component<ServiceProps> {
 
   handleQuery(query: any) {
     if (this.props.api || this.props.schemaApi) {
+      // 如果是分页动作，则看接口里面有没有用，没用则  return false
+      // 让组件自己去排序
+      if (
+        query?.hasOwnProperty('orderBy') &&
+        [this.props.api, this.props.schemaApi].every(
+          api =>
+            !api ||
+            !isApiOutdated(
+              api,
+              api,
+              this.props.store.data,
+              createObject(this.props.store.data, query)
+            )
+        )
+      ) {
+        return false;
+      }
+
       this.receive(query);
+      return;
+    }
+
+    if (this.props.onQuery) {
+      return this.props.onQuery(query);
     } else {
-      this.props.onQuery?.(query);
+      return false;
     }
   }
 
@@ -691,7 +728,10 @@ export default class Service extends React.Component<ServiceProps> {
             action.redirect && filter(action.redirect, store.data);
           redirect && env.jumpTo(redirect, action);
           action.reload &&
-            this.reloadTarget(filter(action.reload, store.data), store.data);
+            this.reloadTarget(
+              filterTarget(action.reload, store.data),
+              store.data
+            );
         })
         .catch(e => {
           if (throwErrors || action.countDown) {

@@ -111,6 +111,8 @@ amis.embed(
 
 可以通过 props 里的 data 属性来赋予 amis 顶层数据域的值，类似下面的例子。
 
+> 3.1.0 开始可以传入 context 数据，无论哪层都可以使用到这个里面的数据。适合用来传递一些平台数据。
+
 ```js
 let amis = amisRequire('amis/embed');
 let amisJSON = {
@@ -123,6 +125,12 @@ let amisJSON = {
 let amisScoped = amis.embed('#root', amisJSON, {
   data: {
     myData: 'amis'
+  },
+  context: {
+    amisUser: {
+      id: 1,
+      name: 'test user'
+    }
   }
 });
 ```
@@ -226,6 +234,34 @@ amisScoped.updateProps(
     // 新的属性对象
   } /*, () => {} 更新回调 */
 );
+```
+
+### 更新配置
+
+可以通过 amisScoped 对象的 udpateSchema 方法来更新更新内容配置。
+
+```js
+let amisJSON = {
+  type: 'page',
+  body: [
+    'inital string',
+
+    {
+      type: 'button',
+      label: 'Change',
+      onClick: handleChange
+    }
+  ]
+};
+let amisScoped = amis.embed('#root', amisJSON);
+
+function handleChange() {
+  const schema = {
+    ...amisJSON,
+    body: ['changed']
+  };
+  amisScoped.updateSchema(schema);
+}
 ```
 
 ### 多页模式
@@ -667,7 +703,7 @@ render 有三个参数，后面会详细说明这三个参数内的属性
 (schema: any, path: string) => Promise<Function>;
 ```
 
-可以通过它懒加载自定义组件，比如： https://github.com/baidu/amis/blob/master/__tests__/factory.test.tsx#L64-L91。
+可以通过它懒加载自定义组件，比如： https://github.com/baidu/amis/blob/master/packages/amis-core/__tests__/factory.test.tsx#L64-L91。
 
 #### affixOffsetTop: number
 

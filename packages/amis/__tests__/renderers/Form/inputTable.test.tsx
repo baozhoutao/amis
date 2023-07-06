@@ -7,7 +7,7 @@ import {
 } from '@testing-library/react';
 import '../../../src';
 import {render as amisRender, clearStoresCache} from '../../../src';
-import {makeEnv, wait} from '../../helper';
+import {makeEnv, replaceReactAriaIds, wait} from '../../helper';
 
 afterEach(() => {
   cleanup();
@@ -62,6 +62,7 @@ test('Renderer:input table', () => {
     )
   );
 
+  replaceReactAriaIds(container);
   expect(container).toMatchSnapshot();
 });
 
@@ -131,17 +132,15 @@ test('Renderer: input-table with default value column', async () => {
   await wait(1000);
 
   fireEvent.click(getByText('Submit'));
+  await wait(200);
 
-  // 不 await 会把错误报到本文件 别的测试中
-  await waitFor(() => {
-    expect(onSubmitCallbackFn).toHaveBeenCalledTimes(1);
-    expect(onSubmitCallbackFn.mock.calls[0][0]).toEqual({
-      table: [
-        {a: 'a1', b: 'b1' /* c: 'a1' */},
-        {a: 'a2', b: 'b2' /* c: 'a2' */},
-        {a: 'a3', b: 'b3' /* c: 'a3' */}
-      ]
-    });
+  expect(onSubmitCallbackFn).toHaveBeenCalledTimes(1);
+  expect(onSubmitCallbackFn.mock.calls[0][0]).toEqual({
+    table: [
+      {a: 'a1', b: 'b1', c: 'a1'},
+      {a: 'a2', b: 'b2', c: 'a2'},
+      {a: 'a3', b: 'b3', c: 'a3'}
+    ]
   });
 }, 10000);
 
@@ -194,6 +193,7 @@ test('Renderer:input table add', async () => {
 
   // TODO: 这里不对，难道是点击出错了
 
+  replaceReactAriaIds(container);
   expect(container).toMatchSnapshot();
 });
 
@@ -273,6 +273,7 @@ test('Renderer:input-table with combo column', async () => {
   });
   // input-table 中套 combo。多次 lazy change， 所以时间需要长点
   await wait(1000);
+  replaceReactAriaIds(container);
   expect(container).toMatchSnapshot();
   fireEvent.click(submitBtn);
 
@@ -304,7 +305,7 @@ test('Renderer:input-table verifty', async () => {
         data: {
           table: [{}]
         },
-        api: 'https://3xsw4ap8wah59.cfc-execute.bj.baidubce.com/api/amis-mock/mock2/form/saveForm',
+        api: 'https://aisuda.bce.baidu.com/amis/api/mock2/form/saveForm',
         body: [
           {
             type: 'input-table',
@@ -347,6 +348,7 @@ test('Renderer:input-table verifty', async () => {
   const submitBtn = await findByText('submitBtn');
   fireEvent.click(submitBtn);
 
+  replaceReactAriaIds(container);
   expect(container).toMatchSnapshot();
 
   const input = await findByPlaceholderText('请输入数字');
@@ -381,7 +383,7 @@ test('Renderer:input-table cell selects delete', async () => {
             }
           ]
         },
-        api: 'https://3xsw4ap8wah59.cfc-execute.bj.baidubce.com/api/amis-mock/mock2/form/saveForm',
+        api: 'https://aisuda.bce.baidu.com/amis/api/mock2/form/saveForm',
         body: [
           {
             type: 'input-table',
@@ -436,5 +438,6 @@ test('Renderer:input-table cell selects delete', async () => {
       }
     ]
   });
+  replaceReactAriaIds(container);
   expect(container).toMatchSnapshot();
 });

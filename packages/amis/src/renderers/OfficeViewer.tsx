@@ -7,6 +7,7 @@ import {BaseSchema} from '../Schema';
 import {
   ActionObject,
   createObject,
+  filter,
   isApiOutdated,
   IScopedContext,
   Renderer,
@@ -15,8 +16,9 @@ import {
   resolveVariableAndFilter,
   ScopedContext
 } from 'amis-core';
-import type {Word} from 'ooxml-viewer';
+import type {Word} from 'office-viewer';
 import {Spinner} from 'amis-ui';
+import {Payload} from '../types';
 
 export interface OfficeViewerSchema extends BaseSchema {
   type: 'office-viewer';
@@ -28,7 +30,7 @@ export interface OfficeViewerSchema extends BaseSchema {
   /**
    * word 文档的渲染配置
    */
-  wordOptions?: {};
+  wordOptions?: any;
 
   /**
    * 是否显示文档
@@ -86,8 +88,18 @@ export default class OfficeViewer extends React.Component<
       this.renderWord();
     }
 
-    // 这个变量替换只会更新变化的部分，所以性能还能接受
-    this.word?.updateVariable();
+    if (props.wordOptions?.enableVar) {
+      if (
+        props.trackExpression &&
+        filter(props.trackExpression, props.data) !==
+          filter(prevProps.trackExpression, prevProps.data)
+      ) {
+        this.renderWord();
+      } else {
+        // 目前 word 渲染比较快，所以全量渲染性能可以接受
+        this.renderWord();
+      }
+    }
   }
 
   /**
@@ -141,11 +153,18 @@ export default class OfficeViewer extends React.Component<
       return;
     }
 
-    const response = await env.fetcher(finalSrc, data, {
-      responseType: 'arraybuffer'
-    });
+    let response: Payload;
 
-    import('ooxml-viewer').then(async (officeViewer: any) => {
+    try {
+      response = await env.fetcher(finalSrc, data, {
+        responseType: 'arraybuffer'
+      });
+    } catch (error) {
+      env.alert(error);
+      return;
+    }
+
+    import('office-viewer').then(async (officeViewer: any) => {
       const Word = officeViewer.Word;
       const word = new Word(response.data, {
         ...wordOptions,
@@ -175,7 +194,7 @@ export default class OfficeViewer extends React.Component<
       reader.onload = _e => {
         const data = reader.result as ArrayBuffer;
 
-        import('ooxml-viewer').then(async (officeViewer: any) => {
+        import('office-viewer').then(async (officeViewer: any) => {
           const Word = officeViewer.Word;
           const word = new Word(data, {
             ...wordOptions,
@@ -205,7 +224,7 @@ export default class OfficeViewer extends React.Component<
       loadingConfig
     } = this.props;
     return (
-      <div ref={this.rootElement} className={cx('ooxml-viewer', className)}>
+      <div ref={this.rootElement} className={cx('office-viewer', className)}>
         {/* 避免没内容时编辑器都选不了 */}
         {display !== false && !src && !name && (
           <svg width="100%" height="100" xmlns="http://www.w3.org/2000/svg">

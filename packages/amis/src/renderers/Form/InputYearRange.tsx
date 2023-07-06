@@ -5,10 +5,11 @@ import {filterDate, parseDuration} from 'amis-core';
 import InputDateRange, {DateRangeControlSchema} from './InputDateRange';
 import {DateRangePicker} from 'amis-ui';
 import {supportStatic} from './StaticHoc';
+import {isMobile} from 'amis-core';
 
 /**
  * YearRange 年份范围控件
- * 文档：https://baidu.gitee.io/amis/docs/components/form/input-year-range
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/form/input-year-range
  */
 export interface YearRangeControlSchema
   extends Omit<DateRangeControlSchema, 'type'> {
@@ -28,16 +29,26 @@ export default class YearRangeControl extends InputDateRange {
       maxDuration,
       data,
       format,
+      useMobileUI,
       env,
       ...rest
     } = this.props;
+    const mobileUI = useMobileUI && isMobile();
 
     return (
       <div className={cx(`${ns}DateRangeControl`, className)}>
         <DateRangePicker
           viewMode="years"
           format={format}
+          useMobileUI={useMobileUI}
           classPrefix={ns}
+          popOverContainer={
+            mobileUI && env && env.getModalContainer
+              ? env.getModalContainer
+              : mobileUI
+              ? undefined
+              : rest.popOverContainer
+          }
           data={data}
           {...rest}
           minDate={minDate ? filterDate(minDate, data, format) : undefined}
@@ -63,7 +74,9 @@ export class YearRangeControlRenderer extends YearRangeControl {
     joinValues: true,
     delimiter: ',',
     timeFormat: '',
+    /** shortcuts的兼容配置 */
     ranges: 'thisyear,prevyear',
+    shortcuts: 'thisyear,prevyear',
     animation: true
   };
 }

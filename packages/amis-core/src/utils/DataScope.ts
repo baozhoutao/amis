@@ -1,6 +1,15 @@
 import {JSONSchema} from '../types';
 import {guid, keyToPath, mapTree} from './helper';
 
+export const DATASCHEMA_TYPE_MAP: {[type: string]: string} = {
+  boolean: '布尔',
+  integer: '整数',
+  number: '数字',
+  string: '文本',
+  array: '数组',
+  object: '对象'
+};
+
 export class DataScope {
   // 指向父级
   parent?: DataScope;
@@ -17,6 +26,9 @@ export class DataScope {
 
   // scope 分类
   tag?: string;
+
+  // scope 分组（不同scope）
+  group?: string;
 
   // scope 的描述信息
   description?: string;
@@ -97,28 +109,97 @@ export class DataScope {
     return false;
   }
 
+  assignSchema(target: any, schema: any): any {
+    // key相同，type也相同
+    if (target.type && target.type === schema.type) {
+      if (target.type === 'array') {
+        // 先只考虑items，不考虑contains
+        if (target.items) {
+          if (Array.isArray(target.items)) {
+            if (schema.items) {
+              if (Array.isArray(schema.items)) {
+                // 如果都是数组，就后者覆盖前者
+                return schema.items;
+              } else {
+                // 否则，追加
+                return {
+                  ...target,
+                  items: [...target.items, schema.items]
+                };
+              }
+            } else {
+              return {
+                ...target,
+                ...schema
+              };
+            }
+          } else {
+            // 非数组，则merge
+            return {
+              ...target,
+              items: this.assignSchema(target.items, schema.items)
+            };
+          }
+        } else {
+          return schema;
+        }
+      } else if (target.type === 'object' && target.properties) {
+        let properties: any = {};
+
+        // 合并属性
+        for (let key of Array.from(
+          new Set([
+            ...Object.keys(target.properties),
+            ...Object.keys(schema.properties)
+          ])
+        )) {
+          const value = target.properties[key];
+          if (value) {
+            properties[key] = schema.properties[key]
+              ? this.assignSchema(value, schema.properties[key])
+              : value;
+          } else {
+            properties[key] = schema.properties[key];
+          }
+        }
+        return {
+          ...target,
+          properties
+        };
+      } else {
+        return schema;
+      }
+    } else {
+      // key相同、type不同
+      if (Array.isArray(target.oneOf)) {
+        return {
+          ...target, // 先做个显示过度，因formula还没支持oneOf
+          oneOf: [...target.oneOf, schema]
+        };
+      } else {
+        return {
+          ...target, // 先做个显示过度，因formula还没支持oneOf
+          oneOf: [target, schema]
+        };
+      }
+    }
+  }
+
   getMergedSchema() {
     const mergedSchema: any = {
       type: 'object',
       properties: {}
     };
 
-    // todo 以后再来细化这一块，先粗略的写个大概
     this.schemas.forEach(schema => {
       const properties: any = schema.properties || {};
       Object.keys(properties).forEach(key => {
         const value = properties[key];
         if (mergedSchema.properties[key]) {
-          if (Array.isArray(mergedSchema.properties[key].oneOf)) {
-            mergedSchema.properties[key].oneOf.push();
-          } else if (
-            mergedSchema.properties[key].type &&
-            mergedSchema.properties[key].type !== value.type
-          ) {
-            mergedSchema.properties[key] = {
-              oneOf: [mergedSchema.properties[key], value]
-            };
-          }
+          mergedSchema.properties[key] = this.assignSchema(
+            mergedSchema.properties[key],
+            value
+          );
         } else {
           mergedSchema.properties[key] = value;
         }
@@ -131,23 +212,40 @@ export class DataScope {
   protected buildOptions(
     options: Array<any>,
     schema: JSONSchema,
-    path: string = '',
+    path: {label: string; value: string} = {label: '', value: ''},
     key: string = '',
-    /** 是否数组元素，数组元素的内容将获取每个成员的对应值 */
-    isArrayItem = false,
-    /** 不是所有的都可以选择，但不影响子元素 */
-    disabled?: boolean
+    isMember?: boolean // 是否是数组成员
   ) {
     // todo 支持 oneOf, anyOf
-    const option: any = {
+    let option: any = {
       label: schema.title || key,
-      value: path,
+      value: schema.title === '成员' ? '' : path.value,
+      path: schema.title === '成员' ? '' : path.label,
       type: schema.type,
-      tag: schema.description ?? schema.type,
-      disabled
+      tag:
+        schema.typeLabel ??
+        DATASCHEMA_TYPE_MAP[schema.type as string] ??
+        schema.type,
+      description: schema.description,
+      isMember,
+      disabled: schema.title === '成员'
     };
 
-    options.push(option);
+    // 处理option分组
+    if (schema.group) {
+      const index = options.findIndex(item => item.label === schema.group);
+      if (~index) {
+        options[index].children.push(option);
+      } else {
+        options.push({
+          label: schema.group,
+          value: '',
+          children: [option]
+        });
+      }
+    } else {
+      options.push(option);
+    }
 
     if (schema.type === 'object' && schema.properties) {
       option.children = [];
@@ -155,43 +253,39 @@ export class DataScope {
 
       keys.forEach(key => {
         const child: any = schema.properties![key];
-        const newPath = isArrayItem ? `ARRAYMAP(${path}, item => item.${key})` : (path + (path ? '.' : '') + key);
-
         this.buildOptions(
           option.children,
           child,
-          newPath,
+          {
+            label: path.label + (path.label ? '.' : '') + (child.title ?? key),
+            value: path.value + (path.value ? '.' : '') + key
+          },
           key,
-          isArrayItem,
-          false
+          schema.title === '成员'
         );
       });
-    } else if (schema.type === 'array' && schema.items) {
+    } else if (schema.type === 'array' && (schema.items as any)?.properties) {
       option.children = [];
-      
+
       this.buildOptions(
         option.children,
         {
           title: '成员',
-          ...(schema.items as any)
+          ...(schema.items as any),
+          disabled: true
         },
-        path,
+        {
+          label: path.label,
+          value: path.value
+        },
         'items',
-        true,
-        true
+        schema.title === '成员'
       );
 
-      this.buildOptions(
-        option.children,
-        {
-          title: '总数',
-          type: 'number'
-        },
-        path + (path ? '.' : '') + 'length',
-        'length',
-        true,
-        isArrayItem
-      );
+      option.children = mapTree(option.children, item => ({
+        ...item
+        // disabled: true
+      }));
     }
   }
 
@@ -218,5 +312,9 @@ export class DataScope {
       }
     }
     return null;
+  }
+
+  getSchemaById(id: string) {
+    return this.schemas?.find(item => item.$id === id);
   }
 }

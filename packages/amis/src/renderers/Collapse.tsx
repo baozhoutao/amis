@@ -3,14 +3,16 @@ import {
   Renderer,
   RendererProps,
   generateIcon,
-  IconCheckedSchema
+  IconCheckedSchema,
+  autobind,
+  resolveEventData
 } from 'amis-core';
 import {Collapse as BasicCollapse} from 'amis-ui';
 import {BaseSchema, SchemaCollection, SchemaTpl, SchemaObject} from '../Schema';
 
 /**
  * Collapse 折叠渲染器，格式说明。
- * 文档：https://baidu.gitee.io/amis/docs/components/collapse
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/collapse
  */
 export interface CollapseSchema extends BaseSchema {
   /**
@@ -92,6 +94,10 @@ export interface CollapseSchema extends BaseSchema {
    * 卡片隐藏就销毁内容。
    */
   unmountOnExit?: boolean;
+  /**
+   * 标题内容分割线
+   */
+  divideLine?: boolean;
 }
 
 export interface CollapseProps
@@ -116,6 +122,21 @@ export default class Collapse extends React.Component<CollapseProps, {}> {
     'collapseHeader',
     'size'
   ];
+
+  @autobind
+  async handleCollapseChange(props: any, collapsed: boolean) {
+    const {dispatchEvent, onCollapse} = this.props;
+    const rendererEvent = await dispatchEvent(
+      'change',
+      resolveEventData(this.props, {
+        collapsed
+      })
+    );
+    if (rendererEvent?.prevented) {
+      return;
+    }
+    onCollapse?.(props, collapsed);
+  }
 
   render() {
     const {
@@ -147,8 +168,11 @@ export default class Collapse extends React.Component<CollapseProps, {}> {
       disabled,
       collapsed,
       propsUpdate,
-      onCollapse
+      useMobileUI,
+      divideLine
     } = this.props;
+
+    const heading = title || header || '';
 
     return (
       <BasicCollapse
@@ -184,7 +208,7 @@ export default class Collapse extends React.Component<CollapseProps, {}> {
             ? render('heading', collapseTitle || collapseHeader)
             : null
         }
-        header={render('heading', title || header || '')}
+        header={heading ? render('heading', heading) : null}
         body={
           children
             ? typeof children === 'function'
@@ -194,7 +218,9 @@ export default class Collapse extends React.Component<CollapseProps, {}> {
             ? render('body', body)
             : null
         }
-        onCollapse={onCollapse}
+        useMobileUI={useMobileUI}
+        onCollapse={this.handleCollapseChange}
+        divideLine={divideLine}
       ></BasicCollapse>
     );
   }

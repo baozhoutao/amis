@@ -2,9 +2,9 @@
  * 数据源构造器，可用于对接当前amis中的扩展数据源
  */
 
-import type {ButtonSchema} from 'amis/lib/renderers/Action';
-import type {CRUD2Schema} from 'amis/lib/renderers/CRUD2';
-import type {FormSchema, SchemaCollection, SchemaObject} from 'amis/lib/Schema';
+import type {ButtonSchema} from 'amis';
+import type {CRUD2Schema} from 'amis';
+import type {FormSchema, SchemaCollection, SchemaObject} from 'amis';
 import {EditorNodeType} from '../store/node';
 
 /**
@@ -102,7 +102,12 @@ export interface DSSourceSettingFormConfig {
   grain?: DSGrain;
   /** 数据源所被使用的功能场景 */
   feat: DSFeatureType;
-  /** 是否是在CRUD场景下，有的数据源在CRUD中可以统一设置 */
+  /** 渲染器类型 */
+  renderer?: string;
+  /**
+   * @deprecated 待废弃，使用renderer字段代替
+   * 是否是在CRUD场景下，有的数据源在CRUD中可以统一设置
+   * */
   inCrud?: boolean;
   /** 是否在脚手架中 */
   inScaffold?: boolean;
@@ -230,7 +235,10 @@ export abstract class DSBuilder {
     feat?: DSFeatureType;
   }): SchemaObject[];
 
-  abstract resolveSimpleFilterSchema(config: {setting: any}): SchemaObject[];
+  abstract resolveSimpleFilterSchema(config: {
+    setting: any;
+    size?: 'xs' | 'sm' | 'md' | 'lg' | 'full';
+  }): SchemaObject[];
 
   abstract resolveAdvancedFilterSchema(config: {
     setting: any;
@@ -255,6 +263,7 @@ export abstract class DSBuilder {
       schema: any;
       sourceKey: string;
       feat: DSFeatureType;
+      scopeNode?: EditorNodeType;
     },
     target: EditorNodeType
   ): Promise<SchemaCollection | void>;

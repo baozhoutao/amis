@@ -5,11 +5,10 @@ import {
   getI18nEnabled
 } from 'amis-editor-core';
 import {tipedLabel} from 'amis-editor-core';
-import type {SchemaObject} from 'amis/lib/Schema';
+import type {SchemaObject} from 'amis';
 import assign from 'lodash/assign';
 import cloneDeep from 'lodash/cloneDeep';
 import omit from 'lodash/omit';
-import get from 'lodash/get';
 
 setSchemaTpl('options', () => {
   const i18nEnabled = getI18nEnabled();
@@ -139,6 +138,25 @@ setSchemaTpl('multiple', (schema: any = {}) => {
           ]
     }
   };
+});
+
+setSchemaTpl('strictMode', {
+  type: 'switch',
+  label: '严格模式',
+  name: 'strictMode',
+  value: false,
+  mode: 'horizontal',
+  horizontal: {
+    justify: true,
+    left: 8
+  },
+  inputClassName: 'is-inline ',
+  labelRemark: {
+    trigger: ['hover', 'focus'],
+    setting: true,
+    title: '',
+    content: '启用严格模式将采用值严格相等比较'
+  }
 });
 
 setSchemaTpl('checkAllLabel', {

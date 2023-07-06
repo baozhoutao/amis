@@ -31,7 +31,7 @@ import type {IItem} from 'amis-core';
 
 /**
  * Cards 卡片集合渲染器。
- * 文档：https://baidu.gitee.io/amis/docs/components/card
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/card
  */
 export interface CardsSchema extends BaseSchema, SpinnerExtraProps {
   /**
@@ -168,7 +168,7 @@ export interface GridProps
     }
   ) => void;
   onSaveOrder?: (moved: Array<object>, items: Array<object>) => void;
-  onQuery: (values: object) => void;
+  onQuery: (values: object) => any;
 }
 
 export default class Cards extends React.Component<GridProps, object> {

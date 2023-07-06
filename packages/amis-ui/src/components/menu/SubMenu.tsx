@@ -209,8 +209,7 @@ export class SubMenu extends React.Component<SubMenuProps> {
   }
 
   render() {
-    const {className, popupClassName, classnames: cx, hidden} = this.props;
-
+    const {popupClassName, classnames: cx, hidden, className} = this.props;
     const isDarkTheme = this.context.themeColor === 'dark';
     return hidden ? null : (
       <RcSubMenu
@@ -223,7 +222,6 @@ export class SubMenu extends React.Component<SubMenuProps> {
           className
         )}
         popupClassName={cx(
-          'Nav-Menu-submenu-popup',
           {
             ['Nav-Menu-submenu-popup-dark']: isDarkTheme
           },

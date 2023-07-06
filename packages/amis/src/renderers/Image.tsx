@@ -22,7 +22,7 @@ export interface ImageToolbarAction {
 
 /**
  * 图片展示控件。
- * 文档：https://baidu.gitee.io/amis/docs/components/image
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/image
  */
 export interface ImageSchema extends BaseSchema {
   /**
@@ -66,6 +66,11 @@ export interface ImageSchema extends BaseSchema {
   enlargeAble?: boolean;
 
   /**
+   * 放大时是否显示图片集
+   */
+  enlargeWithGallary?: boolean;
+
+  /**
    * 是否显示尺寸。
    */
   // showDimensions?: boolean;
@@ -102,6 +107,11 @@ export interface ImageSchema extends BaseSchema {
    * 图片缩略图外层 css 类名
    */
   thumbClassName?: SchemaClassName;
+
+  /**
+   * 放大详情图 CSS 类名
+   */
+  imageGallaryClassName?: SchemaClassName;
 
   /** 图片说明文字 */
   caption?: SchemaTpl;
@@ -360,6 +370,7 @@ export interface ImageFieldProps extends RendererProps {
   thumbRatio: '1:1' | '4:3' | '16:9';
   originalSrc?: string; // 原图
   enlargeAble?: boolean;
+  enlargeWithGallary?: boolean;
   showToolbar?: boolean;
   toolbarActions?: ImageAction[];
   onImageEnlarge?: (
@@ -371,10 +382,13 @@ export interface ImageFieldProps extends RendererProps {
       thumbMode?: 'w-full' | 'h-full' | 'contain' | 'cover';
       thumbRatio?: '1:1' | '4:3' | '16:9';
       showToolbar?: boolean;
+      imageGallaryClassName?: string;
       toolbarActions?: ImageAction[];
+      enlargeWithGallary?: boolean;
     },
     target: any
   ) => void;
+  imageGallaryClassName?: string;
 }
 
 export class ImageField extends React.Component<ImageFieldProps, object> {
@@ -402,7 +416,9 @@ export class ImageField extends React.Component<ImageFieldProps, object> {
       enlargeTitle,
       enlargeCaption,
       showToolbar,
-      toolbarActions
+      toolbarActions,
+      imageGallaryClassName,
+      enlargeWithGallary
     } = this.props;
 
     onImageEnlarge &&
@@ -415,7 +431,9 @@ export class ImageField extends React.Component<ImageFieldProps, object> {
           thumbMode,
           thumbRatio,
           showToolbar,
-          toolbarActions
+          toolbarActions,
+          imageGallaryClassName,
+          enlargeWithGallary
         },
         this.props
       );

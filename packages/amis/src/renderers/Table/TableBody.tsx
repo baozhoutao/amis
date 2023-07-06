@@ -1,5 +1,5 @@
 import React from 'react';
-import {ClassNamesFn} from 'amis-core';
+import {ClassNamesFn, RendererEvent} from 'amis-core';
 
 import {SchemaNode, ActionObject} from 'amis-core';
 import {TableRow} from './TableRow';
@@ -26,6 +26,19 @@ export interface TableBodyProps extends LocaleProps {
     props: any
   ) => React.ReactNode;
   onCheck: (item: IRow, value: boolean, shift?: boolean) => void;
+  onRowClick: (item: IRow, index: number) => Promise<RendererEvent<any> | void>;
+  onRowDbClick: (
+    item: IRow,
+    index: number
+  ) => Promise<RendererEvent<any> | void>;
+  onRowMouseEnter: (
+    item: IRow,
+    index: number
+  ) => Promise<RendererEvent<any> | void>;
+  onRowMouseLeave: (
+    item: IRow,
+    index: number
+  ) => Promise<RendererEvent<any> | void>;
   onQuickChange?: (
     item: IRow,
     values: object,
@@ -46,6 +59,7 @@ export interface TableBodyProps extends LocaleProps {
   prefixRow?: Array<any>;
   affixRow?: Array<any>;
   itemAction?: ActionSchema;
+  fixedPosition?: 'left' | 'right';
 }
 
 @observer
@@ -69,12 +83,15 @@ export class TableBody extends React.Component<TableBodyProps> {
       footable,
       ignoreFootableContent,
       footableColumns,
-      itemAction
+      itemAction,
+      onRowClick,
+      onRowDbClick,
+      onRowMouseEnter,
+      onRowMouseLeave
     } = this.props;
 
     return rows.map((item: IRow, rowIndex: number) => {
       const itemProps = buildItemProps ? buildItemProps(item, rowIndex) : null;
-
       const doms = [
         <TableRow
           {...itemProps}
@@ -86,7 +103,7 @@ export class TableBody extends React.Component<TableBodyProps> {
           item={item}
           itemClassName={cx(
             rowClassNameExpr
-              ? filter(rowClassNameExpr, item.data)
+              ? filter(rowClassNameExpr, item.locals)
               : rowClassName,
             {
               'is-last': item.depth > 1 && rowIndex === rows.length - 1
@@ -99,6 +116,10 @@ export class TableBody extends React.Component<TableBodyProps> {
           onCheck={onCheck}
           // todo 先注释 quickEditEnabled={item.depth === 1}
           onQuickChange={onQuickChange}
+          onRowClick={onRowClick}
+          onRowDbClick={onRowDbClick}
+          onRowMouseEnter={onRowMouseEnter}
+          onRowMouseLeave={onRowMouseLeave}
           {...rowProps}
         />
       ];
@@ -116,7 +137,7 @@ export class TableBody extends React.Component<TableBodyProps> {
               item={item}
               itemClassName={cx(
                 rowClassNameExpr
-                  ? filter(rowClassNameExpr, item.data)
+                  ? filter(rowClassNameExpr, item.locals)
                   : rowClassName
               )}
               columns={footableColumns}
@@ -124,6 +145,10 @@ export class TableBody extends React.Component<TableBodyProps> {
               render={render}
               onAction={onAction}
               onCheck={onCheck}
+              onRowClick={onRowClick}
+              onRowDbClick={onRowDbClick}
+              onRowMouseEnter={onRowMouseEnter}
+              onRowMouseLeave={onRowMouseLeave}
               footableMode
               footableColSpan={columns.length}
               onQuickChange={onQuickChange}
@@ -147,7 +172,7 @@ export class TableBody extends React.Component<TableBodyProps> {
 
   renderSummaryRow(
     position: 'prefix' | 'affix',
-    items?: Array<any>,
+    items: Array<any>,
     rowIndex?: number
   ) {
     const {
@@ -157,42 +182,74 @@ export class TableBody extends React.Component<TableBodyProps> {
       classnames: cx,
       rows,
       prefixRowClassName,
-      affixRowClassName
+      affixRowClassName,
+      fixedPosition
     } = this.props;
 
     if (!(Array.isArray(items) && items.length)) {
       return null;
     }
 
-    const filterColumns = columns.filter(item => item.toggable);
-    const result: any[] = [];
+    let offset = 0;
 
-    for (let index = 0; index < filterColumns.length; index++) {
-      const item = items[filterColumns[index].rawIndex];
-      item && result.push({...item});
-    }
+    // 将列的隐藏对应的把总结行也隐藏起来
+    const result: any[] = items
+      .map((item, index) => {
+        let colIdxs: number[] = [offset + index];
+        if (item.colSpan > 1) {
+          for (let i = 1; i < item.colSpan; i++) {
+            colIdxs.push(offset + index + i);
+          }
+          offset += item.colSpan - 1;
+        }
 
-    //  如果是勾选栏，让它和下一列合并。
-    if (columns[0].type === '__checkme' && result[0]) {
-      result[0].colSpan = (result[0].colSpan || 1) + 1;
-    }
+        colIdxs = colIdxs.filter(idx =>
+          columns.find(col => col.rawIndex === idx)
+        );
 
-    //  如果是展开栏，让它和下一列合并。
-    if (columns[0].type === '__expandme' && result[0]) {
+        return {
+          ...item,
+          colSpan: colIdxs.length
+        };
+      })
+      .filter(item => item.colSpan);
+
+    //  如果是勾选栏，或者是展开栏，或者是拖拽栏，让它和下一列合并。
+    if (
+      result[0] &&
+      typeof columns[0]?.type === 'string' &&
+      columns[0]?.type.substring(0, 2) === '__'
+    ) {
       result[0].colSpan = (result[0].colSpan || 1) + 1;
     }
 
     // 缺少的单元格补齐
-    const appendLen =
+    let appendLen =
       columns.length - result.reduce((p, c) => p + (c.colSpan || 1), 0);
 
+    // 多了则干掉一些
+    while (appendLen < 0) {
+      const item = fixedPosition === 'right' ? result.shift() : result.pop();
+      if (!item) {
+        break;
+      }
+      appendLen += item.colSpan || 1;
+    }
+
+    // 少了则补个空的
     if (appendLen) {
-      const item = result.pop();
+      const item = /*result.length
+        ? result.pop()
+        : */ {
+        type: 'html',
+        html: '&nbsp;'
+      };
       result.push({
         ...item,
-        colSpan: (item.colSpan || 1) + appendLen
+        colSpan: /*(item.colSpan || 1)*/ 1 + appendLen
       });
     }
+
     const ctx = createObject(data, {
       items: rows.map(row => row.locals)
     });

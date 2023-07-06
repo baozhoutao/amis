@@ -1,4 +1,4 @@
-import {SchemaNode} from '../types';
+import {Schema, SchemaNode} from '../types';
 import {RendererEvent} from '../utils/renderer-event';
 import {
   RendererAction,
@@ -6,9 +6,13 @@ import {
   ListenerContext,
   registerAction
 } from './Action';
+import {createObject, filter, render} from '../index';
+import {reject} from 'lodash';
 
 export interface IAlertAction extends ListenerAction {
   actionType: 'alert';
+  dialog?: Schema;
+  // 兼容历史，保留。为了和其他弹窗保持一致
   args: {
     msg: string;
     [propName: string]: any;
@@ -26,10 +30,28 @@ export interface IConfirmAction extends ListenerAction {
 
 export interface IDialogAction extends ListenerAction {
   actionType: 'dialog';
+  // 兼容历史，保留。不建议用args
   args: {
     dialog: SchemaNode;
   };
-  dialog?: SchemaNode; // 兼容历史
+  dialog?: SchemaNode;
+}
+
+export interface IConfirmDialogAction extends ListenerAction {
+  actionType: 'confirmDialog';
+  dialog?: Schema;
+  // 兼容历史，保留。不建议用args
+  args: {
+    msg: string;
+    title: string;
+    body?: Schema;
+    closeOnEsc?: boolean;
+    size?: '' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
+    confirmText?: string;
+    cancelText?: string;
+    confirmBtnLevel?: string;
+    cancelBtnLevel?: string;
+  };
 }
 
 /**
@@ -54,7 +76,7 @@ export class DialogAction implements RendererAction {
       event,
       {
         actionType: 'dialog',
-        dialog: action.args?.dialog || action.dialog,
+        dialog: action.dialog ?? action.args?.dialog,
         reload: 'none'
       },
       action.data
@@ -105,7 +127,10 @@ export class AlertAction implements RendererAction {
     renderer: ListenerContext,
     event: RendererEvent<any>
   ) {
-    event.context.env.alert?.(action.args?.msg, action.args?.title);
+    event.context.env.alert?.(
+      filter(action.dialog?.msg, event.data) ?? action.args?.msg,
+      filter(action.dialog?.title, event.data) ?? action.args?.title
+    );
   }
 }
 
@@ -114,14 +139,53 @@ export class AlertAction implements RendererAction {
  */
 export class ConfirmAction implements RendererAction {
   async run(
-    action: IConfirmAction,
+    action: IConfirmDialogAction,
     renderer: ListenerContext,
     event: RendererEvent<any>
   ) {
-    const confirmed = await event.context.env.confirm?.(
-      action.args?.msg,
-      action.args?.title
-    );
+    const type = action.dialog?.type ?? (action.args as any)?.type;
+
+    if (!type) {
+      const confirmed = await event.context.env.confirm?.(
+        filter(action.dialog?.msg, event.data) || action.args?.msg,
+        filter(action.dialog?.title, event.data) || action.args?.title,
+        {
+          closeOnEsc:
+            filter(action.dialog?.closeOnEsc, event.data) ||
+            action.args?.closeOnEsc,
+          size: filter(action.dialog?.size, event.data) || action.args?.size,
+          confirmText:
+            filter(action.dialog?.confirmText, event.data) ||
+            action.args?.confirmText,
+          cancelText:
+            filter(action.dialog?.cancelText, event.data) ||
+            action.args?.cancelText,
+          confirmBtnLevel:
+            filter(action.dialog?.confirmBtnLevel, event.data) ||
+            action.args?.confirmBtnLevel,
+          cancelBtnLevel:
+            filter(action.dialog?.cancelBtnLevel, event.data) ||
+            action.args?.cancelBtnLevel
+        }
+      );
+
+      return confirmed;
+    }
+
+    // 自定义弹窗内容
+    const confirmed = await new Promise((resolve, reject) => {
+      renderer.props.onAction?.(
+        event,
+        {
+          actionType: 'dialog',
+          dialog: action.dialog ?? action.args,
+          reload: 'none',
+          callback: (result: boolean) => resolve(result)
+        },
+        action.data
+      );
+    });
+
     return confirmed;
   }
 }

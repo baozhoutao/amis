@@ -196,7 +196,7 @@
 
   &-sublist {
     position: relative;
-    margin: 0 0 0 px2rem(35px);
+    margin: 0 0 0 px2rem(30px);
     display: none;
   }
 
@@ -249,7 +249,7 @@
     }
 
     .#{$ns}TreeSelection-itemLabel {
-      margin-left: var(--gap-xs);
+      // margin-left: var(--gap-xs);
     }
   }
 
@@ -415,5 +415,41 @@
   &-close-btn {
     float: right;
     cursor: pointer;
+  }
+}
+
+.#{$ns}ChainedDropdownSelection {
+  display: inline-block;
+
+  &-item {
+    display: inline-block;
+  }
+}
+
+.#{$ns}DropDownSelection {
+  position: relative;
+  display: inline-block;
+  margin: 0.1875rem;
+  vertical-align: middle;
+
+  &-caret {
+    transition: transform var(--animation-duration) ease-out;
+    margin: 5px;
+    display: flex;
+    color: var(--Form-select-caret-iconColor);
+    &:hover {
+      color: var(--Form-select-caret-onHover-iconColor);
+    }
+
+    > svg {
+      width: px2rem(10px);
+      height: px2rem(10px);
+      top: 0;
+      transform: rotate(90deg);
+    }
+  }
+
+  &-input.is-active &-caret {
+    transform: rotate(180deg);
   }
 }

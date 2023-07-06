@@ -22,14 +22,19 @@ import {
 import {defaultValue, getSchemaTpl, tipedLabel} from 'amis-editor-core';
 import {mockValue} from 'amis-editor-core';
 import {EditorNodeType} from 'amis-editor-core';
-import type {SchemaObject} from 'amis/lib/Schema';
+import type {DataScope, SchemaObject} from 'amis';
 import {
   getEventControlConfig,
   getArgsWrapper
 } from '../renderer/event-control/helper';
-import {schemaArrayFormat, schemaToArray} from '../util';
+import {
+  schemaArrayFormat,
+  schemaToArray,
+  resolveArrayDatasource
+} from '../util';
 
 export class TablePlugin extends BasePlugin {
+  static id = 'TablePlugin';
   // 关联渲染器名字
   rendererName = 'table';
   $schema = '/schemas/TableSchema.json';
@@ -175,13 +180,19 @@ export class TablePlugin extends BasePlugin {
         {
           type: 'object',
           properties: {
-            'event.data.selectedItems': {
-              type: 'array',
-              title: '已选择行'
-            },
-            'event.data.unSelectedItems': {
-              type: 'array',
-              title: '未选择行'
+            data: {
+              type: 'object',
+              title: '数据',
+              properties: {
+                selectedItems: {
+                  type: 'array',
+                  title: '已选行记录'
+                },
+                unSelectedItems: {
+                  type: 'array',
+                  title: '未选行记录'
+                }
+              }
             }
           }
         }
@@ -195,13 +206,19 @@ export class TablePlugin extends BasePlugin {
         {
           type: 'object',
           properties: {
-            'event.data.orderBy': {
-              type: 'string',
-              title: '列排序列名'
-            },
-            'event.data.orderDir': {
-              type: 'string',
-              title: '列排序值'
+            data: {
+              type: 'object',
+              title: '数据',
+              properties: {
+                orderBy: {
+                  type: 'string',
+                  title: '列名'
+                },
+                orderDir: {
+                  type: 'string',
+                  title: '排序值'
+                }
+              }
             }
           }
         }
@@ -215,13 +232,19 @@ export class TablePlugin extends BasePlugin {
         {
           type: 'object',
           properties: {
-            'event.data.filterName': {
-              type: 'string',
-              title: '列筛选列名'
-            },
-            'event.data.filterValue': {
-              type: 'string',
-              title: '列筛选值'
+            data: {
+              type: 'object',
+              title: '数据',
+              properties: {
+                filterName: {
+                  type: 'string',
+                  title: '列名'
+                },
+                filterValue: {
+                  type: 'string',
+                  title: '筛选值'
+                }
+              }
             }
           }
         }
@@ -235,13 +258,19 @@ export class TablePlugin extends BasePlugin {
         {
           type: 'object',
           properties: {
-            'event.data.searchName': {
-              type: 'string',
-              title: '列搜索列名'
-            },
-            'event.data.searchValue': {
+            data: {
               type: 'object',
-              title: '列搜索数据'
+              title: '数据',
+              properties: {
+                searchName: {
+                  type: 'string',
+                  title: '列名'
+                },
+                searchValue: {
+                  type: 'object',
+                  title: '搜索值'
+                }
+              }
             }
           }
         }
@@ -255,9 +284,15 @@ export class TablePlugin extends BasePlugin {
         {
           type: 'object',
           properties: {
-            'event.data.movedItems': {
-              type: 'array',
-              title: '已排序数据'
+            data: {
+              type: 'object',
+              title: '数据',
+              properties: {
+                movedItems: {
+                  type: 'array',
+                  title: '已排序记录'
+                }
+              }
             }
           }
         }
@@ -271,9 +306,15 @@ export class TablePlugin extends BasePlugin {
         {
           type: 'object',
           properties: {
-            'event.data.columns': {
-              type: 'array',
-              title: '当前显示的列配置数据'
+            data: {
+              type: 'object',
+              title: '数据',
+              properties: {
+                columns: {
+                  type: 'array',
+                  title: '当前显示的列配置'
+                }
+              }
             }
           }
         }
@@ -287,9 +328,71 @@ export class TablePlugin extends BasePlugin {
         {
           type: 'object',
           properties: {
-            'event.data.item': {
+            data: {
               type: 'object',
-              title: '行点击数据'
+              title: '数据',
+              properties: {
+                item: {
+                  type: 'object',
+                  title: '当前行记录'
+                },
+                index: {
+                  type: 'number',
+                  title: '当前行索引'
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      eventName: 'rowMouseEnter',
+      eventLabel: '鼠标移入行事件',
+      description: '移入整行时触发',
+      dataSchema: [
+        {
+          type: 'object',
+          properties: {
+            data: {
+              type: 'object',
+              title: '数据',
+              properties: {
+                item: {
+                  type: 'object',
+                  title: '当前行记录'
+                },
+                index: {
+                  type: 'number',
+                  title: '当前行索引'
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      eventName: 'rowMouseLeave',
+      eventLabel: '鼠标移出行事件',
+      description: '移出整行时触发',
+      dataSchema: [
+        {
+          type: 'object',
+          properties: {
+            data: {
+              type: 'object',
+              title: '数据',
+              properties: {
+                item: {
+                  type: 'object',
+                  title: '当前行记录'
+                },
+                index: {
+                  type: 'number',
+                  title: '当前行索引'
+                }
+              }
             }
           }
         }
@@ -304,18 +407,6 @@ export class TablePlugin extends BasePlugin {
       description: '设置表格的选中项',
       innerArgs: ['selected'],
       schema: getArgsWrapper([
-        /*
-        {
-          type: 'input-formula',
-          variables: '${variables}',
-          evalMode: false,
-          variableMode: 'tabs',
-          label: '选中项',
-          size: 'lg',
-          name: 'selected',
-          mode: 'horizontal'
-        }
-        */
         getSchemaTpl('formulaControl', {
           name: 'selected',
           label: '选中项',
@@ -360,13 +451,9 @@ export class TablePlugin extends BasePlugin {
 
               isCRUDBody
                 ? null
-                : {
-                    name: 'source',
-                    type: 'input-text',
-                    label: '数据源',
-                    pipeIn: defaultValue('${items}'),
-                    description: '绑定当前环境变量'
-                  },
+                : getSchemaTpl('sourceBindControl', {
+                    label: '数据源'
+                  }),
 
               {
                 name: 'combineNum',
@@ -600,11 +687,7 @@ export class TablePlugin extends BasePlugin {
   };
 
   filterProps(props: any) {
-    const arr = Array.isArray(props.value)
-      ? props.value
-      : typeof props.source === 'string'
-      ? resolveVariable(props.source, props.data)
-      : resolveVariable('items', props.data);
+    const arr = resolveArrayDatasource(props);
 
     if (!Array.isArray(arr) || !arr.length) {
       const mockedData: any = {};
@@ -679,7 +762,7 @@ export class TablePlugin extends BasePlugin {
     region?: EditorNodeType,
     trigger?: EditorNodeType
   ) {
-    const itemsSchema: any = {
+    let itemsSchema: any = {
       $id: 'tableRow',
       type: 'object',
       properties: {}
@@ -688,16 +771,59 @@ export class TablePlugin extends BasePlugin {
       item => item.isRegion && item.region === 'columns'
     );
 
-    for (let current of columns?.children) {
-      const schema = current.schema;
-      if (schema.name) {
-        itemsSchema.properties[schema.name] = current.info?.plugin
-          ?.buildDataSchemas
-          ? await current.info.plugin.buildDataSchemas(current, region)
-          : {
-              type: 'string',
-              title: schema.label || schema.name
-            };
+    // todo：以下的处理无效，需要cell实现才能深层细化
+    // for (let current of columns?.children) {
+    //   const schema = current.schema;
+    //   if (schema.name) {
+    //     itemsSchema.properties[schema.name] = current.info?.plugin
+    //       ?.buildDataSchemas
+    //       ? await current.info.plugin.buildDataSchemas(current, region)
+    //       : {
+    //           type: 'string',
+    //           title: schema.label || schema.name
+    //         };
+    //   }
+    // }
+
+    // 一期先简单处理，上面todo实现之后，这里可以废弃
+    // 收集table配置的列成员
+    for (let current of node.schema?.columns) {
+      if (current.name) {
+        itemsSchema.properties[current.name] = {
+          type: 'string',
+          title: current.label || current.name
+        };
+      }
+    }
+
+    // 收集source绑定的列表成员
+    if (node.schema.source) {
+      const sourceMatch1 = node.schema.source.match(/\$\{(.*?)\}/);
+      const sourceMatch2 = node.schema.source.match(/\$(\w+$)/);
+      const source = sourceMatch1
+        ? sourceMatch1[1]
+        : sourceMatch2
+        ? sourceMatch2[1]
+        : '';
+      let scope: any = this.manager.dataSchema.getScope(
+        `${node.info.id}-${node.info.type}`
+      );
+
+      while (scope) {
+        const rowMembers: any = scope.schemas.find(
+          (item: any) => item.properties?.[source]
+        );
+
+        if (rowMembers) {
+          itemsSchema = {
+            ...itemsSchema,
+            properties: {
+              ...itemsSchema.properties,
+              ...(rowMembers.properties?.[source] as any)?.items?.properties
+            }
+          };
+        }
+        scope = rowMembers ? undefined : scope.parent;
       }
     }
 
@@ -705,14 +831,21 @@ export class TablePlugin extends BasePlugin {
       return itemsSchema;
     }
 
-    let cellProperties = {};
+    let cellProperties: any = {};
     if (trigger) {
       const isColumnChild = someTree(
         columns?.children,
         item => item.id === trigger.id
       );
 
-      isColumnChild && (cellProperties = itemsSchema.properties);
+      if (isColumnChild) {
+        Object.keys(itemsSchema.properties).map(key => {
+          cellProperties[key] = {
+            ...itemsSchema.properties[key],
+            group: '当前行记录'
+          };
+        });
+      }
     }
 
     return {
@@ -723,6 +856,16 @@ export class TablePlugin extends BasePlugin {
         rows: {
           type: 'array',
           title: '数据列表',
+          items: itemsSchema
+        },
+        selectedItems: {
+          type: 'array',
+          title: '已选中行',
+          items: itemsSchema
+        },
+        unSelectedItems: {
+          type: 'array',
+          title: '未选中行',
           items: itemsSchema
         }
       }

@@ -11,13 +11,15 @@ import {
   qsstringify,
   cloneObject,
   createObject,
+  extendObject,
   qsparse,
   uuid,
   JSONTraverse
 } from './helper';
 import isPlainObject from 'lodash/isPlainObject';
 import {debug, warning} from './debug';
-import {evaluate, parse} from 'amis-formula';
+import {evaluate} from 'amis-formula';
+import {memoryParse} from './memoryParse';
 
 const rSchema =
   /(?:^|raw\:)(get|post|put|delete|patch|options|head|jsonp|js):/i;
@@ -100,7 +102,7 @@ export function buildApi(
   const raw = (api.url = api.url || '');
   let ast: any = undefined;
   try {
-    ast = parse(api.url);
+    ast = memoryParse(api.url);
   } catch (e) {
     console.warn(`api 配置语法出错：${e}`);
     return api;
@@ -141,6 +143,31 @@ export function buildApi(
           }
         : undefined
     );
+  /** 追加data到请求的Query中 */
+  const attachDataToQuery = (
+    apiObject: ApiObject,
+    ctx: Record<string, any>,
+    merge: boolean
+  ) => {
+    const idx = apiObject.url.indexOf('?');
+    if (~idx) {
+      const params = (apiObject.query = {
+        ...qsparse(apiObject.url.substring(idx + 1)),
+        ...apiObject.query,
+        ...ctx
+      });
+      apiObject.url =
+        apiObject.url.substring(0, idx) + '?' + queryStringify(params);
+    } else {
+      apiObject.query = {...apiObject.query, ...ctx};
+      const query = queryStringify(merge ? apiObject.query : ctx);
+      if (query) {
+        apiObject.url = `${apiObject.url}?${query}`;
+      }
+    }
+
+    return apiObject;
+  };
 
   if (~idx) {
     const hashIdx = url.indexOf('#');
@@ -215,39 +242,11 @@ export function buildApi(
       api.data &&
       ((!~raw.indexOf('$') && autoAppend) || api.forceAppendDataToQuery)
     ) {
-      const idx = api.url.indexOf('?');
-      if (~idx) {
-        let params = (api.query = {
-          ...qsparse(api.url.substring(idx + 1)),
-          ...api.query,
-          ...data
-        });
-        api.url = api.url.substring(0, idx) + '?' + queryStringify(params);
-      } else {
-        api.query = {...api.query, ...data};
-        const query = queryStringify(data);
-        if (query) {
-          api.url = `${api.url}?${query}`;
-        }
-      }
+      api = attachDataToQuery(api, data, false);
     }
 
     if (api.data && api.attachDataToQuery !== false) {
-      const idx = api.url.indexOf('?');
-      if (~idx) {
-        let params = (api.query = {
-          ...qsparse(api.url.substring(idx + 1)),
-          ...api.query,
-          ...api.data
-        });
-        api.url = api.url.substring(0, idx) + '?' + queryStringify(params);
-      } else {
-        api.query = {...api.query, ...api.data};
-        const query = queryStringify(api.query);
-        if (query) {
-          api.url = `${api.url}?${query}`;
-        }
-      }
+      api = attachDataToQuery(api, api.data, true);
       delete api.data;
     }
   }
@@ -286,15 +285,25 @@ export function buildApi(
     api.method = 'post';
     api.jsonql = dataMapping(
       api.jsonql,
-      {
-        ...api.query,
-        ...data
-      },
+      /** 需要上层数据域的内容 */
+      extendObject(data, {...api.query, ...data}, false),
       undefined,
       false,
       true
     );
-    api.body = api.data = api.jsonql;
+    /** 同时设置了JSONQL和data时走兼容场景 */
+    api.body = api.data =
+      api.data && api.jsonql
+        ? {
+            data: api.data,
+            jsonql: api.jsonql
+          }
+        : api.jsonql;
+
+    /** JSONQL所有method需要追加data中的变量到query中 */
+    if (api.forceAppendDataToQuery) {
+      api = attachDataToQuery(api, data, true);
+    }
   }
 
   return api;
@@ -343,7 +352,8 @@ export function responseAdaptor(ret: fetcherResult, api: ApiObject) {
     if (
       ret.headers &&
       contentType.startsWith('text/') &&
-      !contentType.includes('markdown')
+      !contentType.includes('markdown') &&
+      api.responseType !== 'blob'
     ) {
       try {
         data = JSON.parse(data);
@@ -685,9 +695,18 @@ export function isApiOutdated(
   }
 
   nextApi = normalizeApi(nextApi);
+  prevApi = (prevApi ? normalizeApi(prevApi) : prevApi) as ApiObject;
 
   if (nextApi.autoRefresh === false) {
     return false;
+  }
+
+  // api 本身有变化
+  if ((prevApi && prevApi.url !== nextApi.url) || !prevApi) {
+    return !!(
+      isValidApi(nextApi.url) &&
+      (!nextApi.sendOn || evalExpression(nextApi.sendOn, nextData))
+    );
   }
 
   const trackExpression = nextApi.trackExpression ?? nextApi.url;
@@ -697,24 +716,18 @@ export function isApiOutdated(
 
   let isModified = false;
 
-  if (prevApi) {
-    prevApi = normalizeApi(prevApi);
-
-    if (nextApi.trackExpression || prevApi.trackExpression) {
-      isModified =
-        tokenize(prevApi.trackExpression || '', prevData) !==
-        tokenize(nextApi.trackExpression || '', nextData);
-    } else {
-      prevApi = buildApi(prevApi as Api, prevData as object, {
-        ignoreData: true
-      });
-      nextApi = buildApi(nextApi as Api, nextData as object, {
-        ignoreData: true
-      });
-      isModified = prevApi.url !== nextApi.url;
-    }
+  if (nextApi.trackExpression || prevApi.trackExpression) {
+    isModified =
+      tokenize(prevApi.trackExpression || '', prevData) !==
+      tokenize(nextApi.trackExpression || '', nextData);
   } else {
-    isModified = true;
+    prevApi = buildApi(prevApi as Api, prevData as object, {
+      ignoreData: true
+    });
+    nextApi = buildApi(nextApi as Api, nextData as object, {
+      ignoreData: true
+    });
+    isModified = prevApi.url !== nextApi.url;
   }
 
   return !!(
@@ -725,10 +738,25 @@ export function isApiOutdated(
 }
 
 export function isValidApi(api: string) {
-  return (
-    api &&
-    /^(?:(https?|wss?|taf):\/\/[^\/]+)?(\/?[^\s\/\?]*){1,}(\?.*)?$/.test(api)
-  );
+  if (!api || typeof api !== 'string') {
+    return false;
+  }
+  const idx = api.indexOf('://');
+
+  // 不允许直接相对路径写 api
+  // 不允许 :// 结尾
+  if ((!~idx && api[0] !== '/') || (~idx && idx + 3 === api.length)) {
+    return false;
+  }
+
+  try {
+    // 不补一个协议，URL 判断为 false
+    api = (~idx ? '' : 'schema://domain') + api;
+    new URL(api);
+  } catch (error) {
+    return false;
+  }
+  return true;
 }
 
 export function isEffectiveApi(

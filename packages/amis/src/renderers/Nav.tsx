@@ -10,7 +10,8 @@ import {
   getExprProperties,
   buildStyle,
   filter,
-  evalExpression
+  evalExpression,
+  insertStyle
 } from 'amis-core';
 import {
   guid,
@@ -82,9 +83,7 @@ export type NavItemSchema = {
 
   className?: string; // 自定义菜单项样式
 
-  accordion?: boolean; // 手风琴展开 仅垂直inline模式支持
-
-  mode?: string; // 菜单项模式 分组模式：group
+  mode?: string; // 菜单项模式 分组模式：group、divider
 } & Omit<BaseSchema, 'type'>;
 
 export interface NavOverflow {
@@ -100,7 +99,7 @@ export interface NavOverflow {
 
   /**
    * 菜单触发按钮的图标
-   * @default "fa fa-ellipsis"
+   * @default "fa fa-ellipsis-h"
    */
   overflowIndicator?: SchemaIcon;
 
@@ -154,7 +153,7 @@ export interface NavOverflow {
 
 /**
  * Nav 导航渲染器
- * 文档：https://baidu.gitee.io/amis/docs/components/nav
+ * 文档：https://aisuda.bce.baidu.com/amis/zh-CN/components/nav
  */
 export interface NavSchema extends BaseSchema {
   /**
@@ -238,7 +237,7 @@ export interface NavSchema extends BaseSchema {
   showKey?: string;
 
   /**
-   * 控制仅展示指定key菜单下的子菜单项
+   * 控制菜单缩起
    */
   collapsed?: boolean;
 
@@ -261,6 +260,16 @@ export interface NavSchema extends BaseSchema {
    * 主题配色 默认light
    */
   themeColor?: 'light' | 'dark';
+
+  /**
+   * 手风琴展开 仅垂直inline模式支持
+   */
+  accordion?: boolean;
+
+  /**
+   * 子菜单项展开浮层样式
+   */
+  popupClassName?: string;
 }
 
 export interface Link {
@@ -360,6 +369,12 @@ export class Navigation extends React.Component<
 
     await onSelect?.(link, depth);
     return false;
+  }
+
+  @autobind
+  async handleChange(links: Array<Link>) {
+    const {onChange} = this.props;
+    onChange && onChange(links);
   }
 
   @autobind
@@ -594,7 +609,7 @@ export class Navigation extends React.Component<
       if (isOverflow) {
         const {
           maxVisibleCount,
-          overflowIndicator = 'fa fa-ellipsis',
+          overflowIndicator = 'fa fa-ellipsis-h',
           overflowLabel,
           overflowClassName
         } = link.overflow;
@@ -610,7 +625,7 @@ export class Navigation extends React.Component<
                     {getIcon(overflowIndicator!) ? (
                       <Icon icon={overflowIndicator} className="icon" />
                     ) : (
-                      generateIcon(cx, overflowIndicator, 'Nav-itemIcon')
+                      generateIcon(cx, overflowIndicator, 'Nav-item-icon')
                     )}
                     {overflowLabel && isObject(overflowLabel)
                       ? render('nav-overflow-label', overflowLabel)
@@ -677,7 +692,9 @@ export class Navigation extends React.Component<
       draggable,
       themeColor,
       expandPosition,
+      popupClassName,
       disabled,
+      id,
       render
     } = this.props;
     const {dropIndicator} = this.state;
@@ -685,7 +702,7 @@ export class Navigation extends React.Component<
     let overflowedIndicator = null;
     if (overflow && isObject(overflow) && overflow.enable) {
       const {
-        overflowIndicator = 'fa fa-ellipsis',
+        overflowIndicator = 'fa fa-ellipsis-h',
         overflowLabel,
         overflowClassName
       } = overflow;
@@ -705,12 +722,36 @@ export class Navigation extends React.Component<
       );
     }
 
+    let styleConfig = null;
+    let classNameId = '';
+    if (style) {
+      try {
+        styleConfig = buildStyle(style, data);
+        // 格式转换
+        // {"color": "red", "lineHeight": "52px"}
+        const styleText = JSON.stringify(styleConfig)
+          .replace(/\,/g, ';')
+          .replace(/\"/g, '')
+          .replace(/[A-Z]/g, s => '-' + s.toLowerCase());
+        // 一个nav对应一个classNameId 避免重复
+        classNameId = cx(`Nav-PopupClassName-${id}`);
+        if (!document.getElementById(classNameId)) {
+          // rc-menu的浮层只支持配置popupClassName 因此需要将配置的style插入到页面 然后将className赋值给浮层
+          insertStyle(`.${classNameId} ${styleText}`, classNameId);
+        }
+      } catch (e) {}
+    }
+
     return (
-      <div className={cx('Nav')} style={buildStyle(style, data)}>
+      <div
+        className={cx('Nav', className, {
+          ['Nav-horizontal']: !stacked
+        })}
+        style={styleConfig}
+      >
         <>
           {Array.isArray(links) ? (
             <Menu
-              className={className}
               navigations={this.normalizeNavigations(links, 1)}
               isActive={(link: NavigationItem, prefix: string = '') => {
                 if (link.link && typeof link.link.active !== 'undefined') {
@@ -727,6 +768,7 @@ export class Navigation extends React.Component<
               themeColor={themeColor}
               onSelect={this.handleClick}
               onToggle={this.toggleLink}
+              onChange={this.handleChange}
               renderLink={(link: MenuItemProps) => link.link}
               badge={itemBadge || badge}
               collapsed={collapsed}
@@ -743,6 +785,9 @@ export class Navigation extends React.Component<
               overflowItemWidth={overflow?.itemWidth}
               overflowComponent={overflow?.wrapperComponent}
               overflowStyle={overflow?.style}
+              popupClassName={`${popupClassName || ''}${
+                classNameId ? ` ${classNameId}` : ''
+              }`}
               expandIcon={
                 expandIcon
                   ? typeof expandIcon === 'string'
@@ -771,25 +816,6 @@ export class Navigation extends React.Component<
 
 const ThemedNavigation = themeable(Navigation);
 
-function getActiveItems(config: Array<any>, depth: number, level: number) {
-  if (depth > level) {
-    return [];
-  }
-  let activeItems: Array<any> = [];
-  config &&
-    config.forEach(item => {
-      if (item.active) {
-        activeItems.push(item);
-      }
-      if (item.children) {
-        activeItems = activeItems.concat(
-          getActiveItems(item.children, depth + 1, level)
-        );
-      }
-    });
-  return activeItems;
-}
-
 const ConditionBuilderWithRemoteOptions = withRemoteConfig({
   adaptor: (config: any, props: any) => {
     const links = Array.isArray(config)
@@ -803,12 +829,15 @@ const ConditionBuilderWithRemoteOptions = withRemoteConfig({
     return links;
   },
   afterLoad: async (response: any, config: any, props: any) => {
-    const {dispatchEvent} = props;
+    const {dispatchEvent, data} = props;
 
-    const rendererEvent = await dispatchEvent('loaded', {
-      data: response.value
-    });
-
+    const rendererEvent = await dispatchEvent(
+      'loaded',
+      createObject(data, {
+        data: response.value,
+        items: response.links
+      })
+    );
     if (rendererEvent?.prevented) {
       return;
     }
@@ -834,9 +863,7 @@ const ConditionBuilderWithRemoteOptions = withRemoteConfig({
         location,
         level,
         defaultOpenLevel,
-        dispatchEvent,
-        disabled,
-        store
+        disabled
       } = props;
 
       const isActive = (link: Link, depth: number) => {
@@ -856,7 +883,7 @@ const ConditionBuilderWithRemoteOptions = withRemoteConfig({
                     !!(
                       l.hasOwnProperty('to') &&
                       env &&
-                      env.isCurrentUrl(filter(l.to as string, data))
+                      env.isCurrentUrl(filter(l.to as string, data), link)
                     )
                 )
               : false) ||
@@ -865,8 +892,9 @@ const ConditionBuilderWithRemoteOptions = withRemoteConfig({
                   evalExpression(link.activeOn as string, location)
                 : !!(
                     link.hasOwnProperty('to') &&
+                    link.to !== null && // 也可能出现{to: null}的情况（独立应用）filter会把null处理成'' 那默认首页会选中很多菜单项 {to: ''}认为是有效配置
                     env &&
-                    env.isCurrentUrl(filter(link.to as string, data))
+                    env.isCurrentUrl(filter(link.to as string, data), link)
                   ));
       };
 
@@ -897,14 +925,6 @@ const ConditionBuilderWithRemoteOptions = withRemoteConfig({
         1,
         true
       );
-
-      const currentActiveItems = getActiveItems(links, 1, level);
-      const prevActiveItems = getActiveItems(store.config, 1, level);
-      setTimeout(() => {
-        if (!isEqual(currentActiveItems, prevActiveItems)) {
-          dispatchEvent('change', {value: currentActiveItems});
-        }
-      }, 0);
     }
 
     return links;
@@ -924,12 +944,15 @@ const ConditionBuilderWithRemoteOptions = withRemoteConfig({
     links: Array<Link>,
     props: any
   ) {
-    const {dispatchEvent} = props;
+    const {dispatchEvent, data} = props;
 
-    const rendererEvent = await dispatchEvent('loaded', {
-      data: ret.data,
-      item: {...item}
-    });
+    const rendererEvent = await dispatchEvent(
+      'loaded',
+      createObject(data, {
+        data: ret.data,
+        item: {...item}
+      })
+    );
 
     if (rendererEvent?.prevented) {
       return;
@@ -977,6 +1000,7 @@ const ConditionBuilderWithRemoteOptions = withRemoteConfig({
       this.toggleLink = this.toggleLink.bind(this);
       this.handleSelect = this.handleSelect.bind(this);
       this.dragUpdate = this.dragUpdate.bind(this);
+      this.handleChange = this.handleChange.bind(this);
 
       props?.onRef(this);
     }
@@ -1004,9 +1028,12 @@ const ConditionBuilderWithRemoteOptions = withRemoteConfig({
       }
 
       if (prevState.collapsed !== this.state.collapsed) {
-        this.props.dispatchEvent('collapsed', {
-          collapsed: this.state.collapsed
-        });
+        this.props.dispatchEvent(
+          'collapsed',
+          createObject(this.props.data, {
+            collapsed: this.state.collapsed
+          })
+        );
       }
     }
 
@@ -1028,15 +1055,19 @@ const ConditionBuilderWithRemoteOptions = withRemoteConfig({
         dispatchEvent,
         stacked,
         mode,
-        accordion
+        accordion,
+        data
       } = this.props;
 
       const isAccordion = stacked && mode !== 'float' && accordion;
 
-      const rendererEvent = await dispatchEvent('toggled', {
-        item: {...target},
-        open: typeof forceFold !== 'undefined' ? !forceFold : !target.unfolded
-      });
+      const rendererEvent = await dispatchEvent(
+        'toggled',
+        createObject(data, {
+          item: {...target},
+          open: typeof forceFold !== 'undefined' ? !forceFold : !target.unfolded
+        })
+      );
 
       if (rendererEvent?.prevented) {
         return;
@@ -1156,13 +1187,24 @@ const ConditionBuilderWithRemoteOptions = withRemoteConfig({
       );
     }
 
+    handleChange(links: Array<Link>) {
+      const {dispatchEvent, data} = this.props;
+      // 如果同时2个nav nav1选中，通过动作更新nav2的数据源，需要异步处理一下，才能执行
+      setTimeout(() => {
+        dispatchEvent('change', createObject(data, {value: links}));
+      });
+    }
+
     async handleSelect(link: Link, depth: number) {
       const {onSelect, env, data, level, dispatchEvent, updateConfig, config} =
         this.props;
 
-      const rendererEvent = await dispatchEvent('click', {
-        item: {...link}
-      });
+      const rendererEvent = await dispatchEvent(
+        'click',
+        createObject(data, {
+          item: {...link}
+        })
+      );
 
       if (rendererEvent?.prevented) {
         return;
@@ -1211,6 +1253,7 @@ const ConditionBuilderWithRemoteOptions = withRemoteConfig({
           disabled={disabled || loading}
           onSelect={this.handleSelect}
           onToggle={this.toggleLink}
+          onChange={this.handleChange}
           onDragUpdate={this.dragUpdate}
         />
       );
@@ -1305,7 +1348,7 @@ export class NavigationRenderer extends React.Component<RendererProps> {
         const {env, data} = this.props;
         const child = findTree(
           children,
-          item => env && env.isCurrentUrl(filter(item.to as string, data))
+          item => env && env.isCurrentUrl(filter(item.to as string, data), item)
         );
 
         env?.jumpTo(
@@ -1340,10 +1383,11 @@ export class NavigationRenderer extends React.Component<RendererProps> {
   }
 
   render() {
-    const {...rest} = this.props;
+    const {id, ...rest} = this.props;
     return (
       <ConditionBuilderWithRemoteOptions
         {...rest}
+        id={id || guid()} // id要么从editor传递过来 要么一个nav随机生成1个
         onRef={this.getRef}
         reload={this.reload}
         remoteConfigRef={this.remoteConfigRef}

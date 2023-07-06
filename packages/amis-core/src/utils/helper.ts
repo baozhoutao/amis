@@ -764,10 +764,17 @@ export interface TreeArray extends Array<TreeItem> {}
  */
 export function mapTree<T extends TreeItem>(
   tree: Array<T>,
-  iterator: (item: T, key: number, level: number, paths: Array<T>) => T,
+  iterator: (
+    item: T,
+    key: number,
+    level: number,
+    paths: Array<T>,
+    indexes: Array<number>
+  ) => T,
   level: number = 1,
   depthFirst: boolean = false,
-  paths: Array<T> = []
+  paths: Array<T> = [],
+  indexes: Array<number> = []
 ) {
   return tree.map((item: any, index) => {
     if (depthFirst) {
@@ -777,15 +784,20 @@ export function mapTree<T extends TreeItem>(
             iterator,
             level + 1,
             depthFirst,
-            paths.concat(item)
+            paths.concat(item),
+            indexes.concat(index)
           )
         : undefined;
       children && (item = {...item, children: children});
-      item = iterator(item, index, level, paths) || {...(item as object)};
+      item = iterator(item, index, level, paths, indexes.concat(index)) || {
+        ...(item as object)
+      };
       return item;
     }
 
-    item = iterator(item, index, level, paths) || {...(item as object)};
+    item = iterator(item, index, level, paths, indexes.concat(index)) || {
+      ...(item as object)
+    };
 
     if (item.children && item.children.splice) {
       item.children = mapTree(
@@ -793,7 +805,8 @@ export function mapTree<T extends TreeItem>(
         iterator,
         level + 1,
         depthFirst,
-        paths.concat(item)
+        paths.concat(item),
+        indexes.concat(index)
       );
     }
 
@@ -813,11 +826,10 @@ export function eachTree<T extends TreeItem>(
   paths: Array<T> = []
 ) {
   tree.map((item, index) => {
-    let currentPath = paths.concat(item);
-    iterator(item, index, level, currentPath);
+    iterator(item, index, level, paths);
 
     if (item.children?.splice) {
-      eachTree(item.children, iterator, level + 1, currentPath);
+      eachTree(item.children, iterator, level + 1, paths.concat(item));
     }
   });
 }
@@ -837,6 +849,27 @@ export function findTree<T extends TreeItem>(
     if (iterator(item, key, level, paths)) {
       result = item;
       return false;
+    }
+    return true;
+  });
+
+  return result;
+}
+
+/**
+ * 在树中查找节点。
+ * @param tree
+ * @param iterator
+ */
+export function findTreeAll<T extends TreeItem>(
+  tree: Array<T>,
+  iterator: (item: T, key: number, level: number, paths: Array<T>) => any
+): Array<T> {
+  let result: Array<T> = [];
+
+  everyTree(tree, (item, key, level, paths) => {
+    if (iterator(item, key, level, paths)) {
+      result.push(item);
     }
     return true;
   });
@@ -904,15 +937,22 @@ export function getTree<T extends TreeItem>(
  */
 export function filterTree<T extends TreeItem>(
   tree: Array<T>,
-  iterator: (item: T, key: number, level: number) => any,
+  iterator: (item: T, key: number, level: number, paths: Array<T>) => any,
   level: number = 1,
-  depthFirst: boolean = false
+  depthFirst: boolean = false,
+  paths: Array<T> = []
 ) {
   if (depthFirst) {
     return tree
       .map(item => {
         let children: TreeArray | undefined = item.children
-          ? filterTree(item.children, iterator, level + 1, depthFirst)
+          ? filterTree(
+              item.children,
+              iterator,
+              level + 1,
+              depthFirst,
+              paths.concat(item)
+            )
           : undefined;
 
         if (Array.isArray(children) && Array.isArray(item.children)) {
@@ -921,18 +961,19 @@ export function filterTree<T extends TreeItem>(
 
         return item;
       })
-      .filter((item, index) => iterator(item, index, level));
+      .filter((item, index) => iterator(item, index, level, paths));
   }
 
   return tree
-    .filter((item, index) => iterator(item, index, level))
+    .filter((item, index) => iterator(item, index, level, paths))
     .map(item => {
       if (item.children?.splice) {
         let children = filterTree(
           item.children,
           iterator,
           level + 1,
-          depthFirst
+          depthFirst,
+          paths.concat(item)
         );
 
         if (Array.isArray(children) && Array.isArray(item.children)) {
@@ -1118,6 +1159,9 @@ export function spliceTree<T extends TreeItem>(
  * @param tree
  */
 export function getTreeDepth<T extends TreeItem>(tree: Array<T>): number {
+  if (Array.isArray(tree) && tree.length === 0) {
+    return 0;
+  }
   return Math.max(
     ...tree.map(item => {
       if (Array.isArray(item.children)) {
@@ -1229,12 +1273,13 @@ export const bulkBindFunctions = function <
 export function sortArray<T extends any>(
   items: Array<T>,
   field: string,
-  dir: -1 | 1
+  dir: -1 | 1,
+  fieldGetter?: (item: T, field: string) => any
 ): Array<T> {
   return items.sort((a: any, b: any) => {
     let ret: number;
-    const a1 = a[field];
-    const b1 = b[field];
+    const a1 = fieldGetter ? fieldGetter(a, field) : a[field];
+    const b1 = fieldGetter ? fieldGetter(b, field) : b[field];
 
     if (typeof a1 === 'number' && typeof b1 === 'number') {
       ret = a1 < b1 ? -1 : a1 === b1 ? 0 : 1;
@@ -1266,11 +1311,12 @@ export function qsstringify(
   },
   keepEmptyArray?: boolean
 ) {
-  // qs会保留空字符串。fix: Combo模式的空数组，无法清空。改为存为空字符串；只转换一层
-  keepEmptyArray &&
-    Object.keys(data).forEach((key: any) => {
-      Array.isArray(data[key]) && !data[key].length && (data[key] = '');
-    });
+  // qs会保留空字符串。fix: Combo模式的空数组，无法清空。改为存为空字符串；
+  if (keepEmptyArray) {
+    data = JSONValueMap(data, value =>
+      Array.isArray(value) && !value.length ? '' : value
+    );
+  }
   return qs.stringify(data, options);
 }
 
@@ -1362,7 +1408,7 @@ export function chainEvents(props: any, schema: any) {
         ret[key] = chainFunctions(schema[key], props[key]);
       }
     } else {
-      ret[key] = props[key];
+      ret[key] = props[key] ?? schema[key];
     }
   });
 
@@ -1658,7 +1704,9 @@ export function isClickOnInput(e: React.MouseEvent<HTMLElement>) {
   if (
     !e.currentTarget.contains(target) ||
     ~['INPUT', 'TEXTAREA'].indexOf(target.tagName) ||
-    ((formItem = target.closest(`button, a, [data-role="form-item"]`)) &&
+    ((formItem = target.closest(
+      `button, a, [data-role="form-item"], label[data-role="checkbox"]`
+    )) &&
       e.currentTarget.contains(formItem))
   ) {
     return true;
@@ -1693,6 +1741,73 @@ export function JSONTraverse(
       }
     }
   });
+}
+
+/**
+ * 每层都会执行，返回新的对象，新对象不会递归下去
+ * @param json
+ * @param mapper
+ * @returns
+ */
+export function JSONValueMap(
+  json: any,
+  mapper: (
+    value: any,
+    key: string | number,
+    host: Object,
+    stack: Array<Object>
+  ) => any,
+  stack: Array<Object> = []
+) {
+  if (!isPlainObject(json) && !Array.isArray(json)) {
+    return json;
+  }
+
+  const iterator = (
+    origin: any,
+    key: number | string,
+    host: any,
+    stack: Array<any> = []
+  ) => {
+    let maped: any = mapper(origin, key, host, stack);
+
+    if (maped === origin && (isPlainObject(origin) || Array.isArray(origin))) {
+      return JSONValueMap(origin, mapper, stack);
+    }
+    return maped;
+  };
+
+  if (Array.isArray(json)) {
+    let flag = false;
+    let mapped = json.map((value, index) => {
+      let result: any = iterator(value, index, json, [json].concat(stack));
+      if (result !== value) {
+        flag = true;
+        return result;
+      }
+      return value;
+    });
+    return flag ? mapped : json;
+  }
+
+  let flag = false;
+  const toUpdate: any = {};
+  Object.keys(json).forEach(key => {
+    const value: any = json[key];
+    let result: any = iterator(value, key, json, [json].concat(stack));
+    if (result !== value) {
+      flag = true;
+      toUpdate[key] = result;
+      return;
+    }
+  });
+
+  return flag
+    ? {
+        ...json,
+        ...toUpdate
+      }
+    : json;
 }
 
 export function convertArrayValueToMoment(
@@ -1748,10 +1863,12 @@ export function parseQuery(
     (location && location?.search && qsparse(location.search.substring(1))) ||
     (window.location.search && qsparse(window.location.search.substring(1)));
   /* 处理hash中的query */
-  const hashQuery =
-    window.location?.hash && typeof window.location?.hash === 'string'
-      ? qsparse(window.location.hash.replace(/^#.*\?/gi, ''))
-      : {};
+  const hash = window.location?.hash;
+  let hashQuery = {};
+  let idx = -1;
+  if (typeof hash === 'string' && ~(idx = hash.indexOf('?'))) {
+    hashQuery = qsparse(hash.substring(idx + 1));
+  }
   const normalizedQuery = isPlainObject(query) ? query : {};
 
   return merge(normalizedQuery, hashQuery);
