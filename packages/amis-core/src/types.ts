@@ -217,8 +217,17 @@ export interface ApiObject extends BaseApiObject {
   operationName?: string;
   body?: PlainObject;
   query?: PlainObject;
-  adaptor?: (payload: object, response: fetcherResult, api: ApiObject) => any;
-  requestAdaptor?: (api: ApiObject) => ApiObject;
+  mockResponse?: PlainObject;
+  adaptor?: (
+    payload: object,
+    response: fetcherResult,
+    api: ApiObject,
+    context: any
+  ) => any;
+  requestAdaptor?: (
+    api: ApiObject,
+    context: any
+  ) => ApiObject | Promise<ApiObject>;
   /** 是否过滤为空字符串的 query 参数 */
   filterEmptyQuery?: boolean;
 }
@@ -247,7 +256,7 @@ export interface fetchOptions {
   errorMessage?: string;
   autoAppend?: boolean;
   beforeSend?: (data: any) => any;
-  onSuccess?: (json: Payload) => any;
+  onSuccess?: (json: Payload, data: any) => any;
   onFailed?: (json: Payload) => any;
   silent?: boolean;
   [propName: string]: any;
@@ -635,6 +644,21 @@ export interface BaseSchemaWithoutType {
    */
   style?: {
     [propName: string]: any;
+  };
+
+  /**
+   * 编辑器配置，运行时可以忽略
+   */
+  editorSetting?: {
+    /**
+     * 组件名称，通常是业务名称方便定位
+     */
+    displayName?: string;
+
+    /**
+     * 编辑器假数据，方便展示
+     */
+    mock?: any;
   };
 }
 

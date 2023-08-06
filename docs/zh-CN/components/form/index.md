@@ -647,14 +647,12 @@ Form 默认会在底部渲染一个提交按钮，用于执行表单的提交行
       "value": true
     },
     {
-      "type": 'button-toolbar',
-      "name": 'button-toolbar',
+      "type": "button-toolbar",
       "buttons": [
         {
           "type": "button",
-          "label": "提交",
+          "label": "${isStatic ? '编辑' : '提交'}",
           "level": "primary",
-          "visibleOn": "${!isStatic}",
           "onEvent": {
             "click": {
               "actions": [
@@ -663,45 +661,26 @@ Form 默认会在底部渲染一个提交按钮，用于执行表单的提交行
                   "componentId": "allFormSwitch",
                   "args": {
                     "value": {
-                      "isStatic": true
+                      "isStatic": "${!isStatic}"
                     }
                   }
                 },
                 {
                   "actionType": "static",
-                  "componentId": "allFormSwitch"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "type": "button",
-          "label": "编辑",
-          "level": "primary",
-          "visibleOn": "${isStatic}",
-          "onEvent": {
-            "click": {
-              "actions": [
-                {
-                  "actionType": "setValue",
                   "componentId": "allFormSwitch",
-                  "args": {
-                    "value": {
-                      "isStatic": false
-                    }
-                  }
+                  "expression": "${!isStatic}"
                 },
                 {
                   "actionType": "nonstatic",
-                  "componentId": "allFormSwitch"
+                  "componentId": "allFormSwitch",
+                  "expression": "${isStatic}"
                 }
               ]
             }
           }
         }
       ]
-    },
+    }
   ],
   "actions": []
 }
@@ -1645,7 +1624,11 @@ Form 支持轮询初始化接口，步骤如下：
 
 ### setValue
 
-通过`setValue`来更新表单数据，其中`value`中的数据将和目标表单的数据做合并，即同名覆盖。
+通过`setValue`更新指定表单的数据。
+
+#### 合并数据
+
+默认`setValue`会将新数据与目标组件数据进行合并。
 
 ```schema: scope="body"
 [
@@ -1661,8 +1644,8 @@ Form 支持轮询初始化接口，步骤如下：
                 "componentId": "form_setvalue",
                 "args": {
                   "value": {
-                    "name": "amis",
-                    "email": "amis@baidu.com"
+                    "name": "aisuda",
+                    "email": "aisuda@baidu.com"
                   }
                 }
               }
@@ -1673,6 +1656,60 @@ Form 支持轮询初始化接口，步骤如下：
   {
     "type": "form",
     "id": "form_setvalue",
+    "data": {
+      "name": "amis",
+      "email": "amis@baidu.com"
+    },
+    "body": [
+      {
+        "type": "input-text",
+        "name": "name",
+        "label": "姓名："
+      },
+      {
+        "name": "email",
+        "type": "input-text",
+        "label": "邮箱："
+      }
+    ]
+  }
+]
+```
+
+#### 覆盖数据
+
+可以通过`"dateMergeMode": "override"`来覆盖目标组件数据。
+
+```schema: scope="body"
+[
+  {
+    "type": "button",
+    "label": "修改表单数据",
+    className: "mb-2",
+    "onEvent": {
+        "click": {
+            "actions": [
+              {
+                "actionType": "setValue",
+                "componentId": "form_setvalue",
+                "args": {
+                  "value": {
+                    "name": "aisuda"
+                  }
+                },
+                "dataMergeMode": "override"
+              }
+            ]
+        }
+    }
+  },
+  {
+    "type": "form",
+    "id": "form_setvalue",
+    "data": {
+      "name": "amis",
+      "email": "amis@baidu.com"
+    },
     "body": [
       {
         "type": "input-text",
@@ -1735,7 +1772,7 @@ Form 支持轮询初始化接口，步骤如下：
 
 #### 发送数据并刷新
 
-刷新 Form 组件时，如果配置了`data`，将发送`data`给目标组件，并将该数据合并到目标组件的数据域中。
+刷新 Form 组件时，如果配置了`data`，将发送`data`给目标组件，并将该数据合并到目标组件的数据域中（如果配置`"dataMergeMode": "override"`将覆盖目标组件的数据），然后重新请求数据。
 
 ```schema: scope="body"
 [

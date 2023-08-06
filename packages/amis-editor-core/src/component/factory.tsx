@@ -25,7 +25,7 @@ import type {Schema} from 'amis';
 import type {DataScope} from 'amis-core';
 import type {RendererConfig} from 'amis-core';
 import type {SchemaCollection} from 'amis';
-import {omit} from 'lodash';
+import omit from 'lodash/omit';
 
 // 创建 Node Store 并构建成树
 export function makeWrapper(
@@ -107,7 +107,9 @@ export function makeWrapper(
         if (info.name) {
           const nodeSchema = manager.store.getNodeById(info.id)?.schema;
           const tag = nodeSchema?.title ?? nodeSchema?.name;
-          manager.dataSchema.current.tag = `${tag ?? ''}「${info.name}」`;
+          manager.dataSchema.current.tag = `${info.name}${
+            tag ? ` : ${tag}` : ''
+          }`;
           manager.dataSchema.current.group = '组件上下文';
         }
       }
@@ -164,7 +166,7 @@ export function makeWrapper(
       const {render} = this.props; // render: amis渲染器
 
       // $$id 变化，渲染器最好也变化
-      if (node.$$id) {
+      if (node?.$$id) {
         props = props || {}; // props 可能为 undefined
         props.key = node.$$id || props.key;
       }

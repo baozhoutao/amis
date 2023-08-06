@@ -73,6 +73,11 @@ export interface FormBaseControl extends BaseSchemaWithoutType {
   name?: string;
 
   /**
+   * 额外的字段名，当为范围组件时可以用来将另外一个值打平出来
+   */
+  extraName?: string;
+
+  /**
    * 显示一个小图标, 鼠标放上去的时候显示提示内容
    */
   remark?: any;
@@ -992,7 +997,8 @@ export class FormItemWrap extends React.Component<FormItemProps> {
                       : 'normal'
                   }`]: horizontal.leftFixed,
                   [`Form-itemColumn--${left}`]: !horizontal.leftFixed,
-                  'Form-label--left': labelAlign === 'left'
+                  'Form-label--left': labelAlign === 'left',
+                  'Form-label-noLabel': label === ''
                 },
                 getItemLabelClassName(props)
               )}

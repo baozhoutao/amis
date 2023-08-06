@@ -876,7 +876,7 @@ schemaApi 接口请求完成。
 
 #### 发送数据并刷新
 
-刷新 Service 组件时，如果配置了`data`，将发送`data`给目标组件，并将该数据合并到目标组件的数据域中。
+刷新 Service 组件时，如果配置了`data`，将发送`data`给目标组件，并将该数据合并到目标组件的数据域中（如果配置`"dataMergeMode": "override"`将覆盖目标组件的数据），然后重新请求数据。
 
 ```schema: scope="body"
 [
@@ -997,7 +997,11 @@ schemaApi 接口请求完成。
 
 ### setValue
 
-更新数据域。
+通过`setValue`更新指定 Service 的数据。
+
+#### 合并数据
+
+默认`setValue`会将新数据与目标组件数据进行合并。
 
 ```schema: scope="body"
 [
@@ -1012,9 +1016,8 @@ schemaApi 接口请求完成。
               "componentId": "service-setvalue",
               "args": {
                 "value": {
-                  "language": [
-                    "🇨🇳 中国"
-                  ]
+                  "name": "aisuda",
+                  "email": "aisuda@baidu.com"
                 }
               }
             }
@@ -1027,18 +1030,59 @@ schemaApi 接口请求完成。
       "id": "service-setvalue",
       "name": "service-setvalue",
       "data": {
-        "language": [
-          "🇺🇸 美国"
-        ]
+        "name": "amis",
+        "email": "amis@baidu.com"
       },
-      "body": {
-        "type": "each",
-        "name": "language",
-        "items": {
+      "body": [
+        {
           "type": "tpl",
-          "tpl": "<span class='label label-default m-l-sm'><%= data.item %></span> "
+          "tpl": "名字：${name|default:'-'}，邮箱：${email|default:'-'}"
+        }
+      ]
+    }
+]
+```
+
+#### 覆盖数据
+
+可以通过`"dataMergeMode": "override"`来覆盖目标组件数据。
+
+```schema: scope="body"
+[
+    {
+      "type": "button",
+      "label": "更新数据",
+      "onEvent": {
+        "click": {
+          "actions": [
+            {
+              "actionType": "setValue",
+              "componentId": "service-setvalue",
+              "args": {
+                "value": {
+                  "name": "aisuda"
+                }
+              },
+              "dataMergeMode": "override"
+            }
+          ]
         }
       }
+    },
+    {
+      "type": "service",
+      "id": "service-setvalue",
+      "name": "service-setvalue",
+      "data": {
+        "name": "amis",
+        "email": "amis@baidu.com"
+      },
+      "body": [
+        {
+          "type": "tpl",
+          "tpl": "名字：${name|default:'-'}，邮箱：${email|default:'-'}"
+        }
+      ]
     }
 ]
 ```

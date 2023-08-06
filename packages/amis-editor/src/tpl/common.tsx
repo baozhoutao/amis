@@ -9,10 +9,13 @@ import {
 import type {DSField} from 'amis-editor-core';
 import type {SchemaObject} from 'amis';
 import flatten from 'lodash/flatten';
-import _ from 'lodash';
 import {InputComponentName} from '../component/InputComponentName';
 import {FormulaDateType} from '../renderer/FormulaControl';
 import {VariableItem} from 'amis-ui/lib/components/formula/Editor';
+import reduce from 'lodash/reduce';
+import map from 'lodash/map';
+import omit from 'lodash/omit';
+import keys from 'lodash/keys';
 
 /**
  * @deprecated 兼容当前组件的switch
@@ -74,6 +77,28 @@ setSchemaTpl('formItemName', {
   //     "matchRegexp": "请输入合法的变量名"
   // },
   // validateOnChange: false
+});
+
+setSchemaTpl('formItemExtraName', {
+  className: 'mb-3',
+  type: 'fieldset',
+  body: [
+    getSchemaTpl('formItemName', {
+      required: true,
+      label: '额外字段',
+      name: 'extraName',
+      visibleOn: 'typeof this.extraName === "string"'
+    }),
+
+    {
+      type: 'switch',
+      label: tipedLabel('存成两个字段', '开启后将选中范围分别存成两个字段'),
+      name: 'extraName',
+      pipeIn: (value: any) => typeof value === 'string',
+      pipeOut: (value: any) => (value ? '' : undefined),
+      inputClassName: 'is-inline'
+    }
+  ]
 });
 
 setSchemaTpl(
@@ -585,7 +610,7 @@ setSchemaTpl(
         });
       }
       if (schema.options) {
-        let optionItem = _.reduce(
+        let optionItem = reduce(
           schema.options,
           function (result, item) {
             return {...result, ...item};
@@ -594,12 +619,12 @@ setSchemaTpl(
         );
         delete optionItem?.$$id;
 
-        optionItem = _.omit(
+        optionItem = omit(
           optionItem,
-          _.map(children, item => item?.label)
+          map(children, item => item?.label)
         );
 
-        let otherItem = _.map(_.keys(optionItem), item => ({
+        let otherItem = map(keys(optionItem), item => ({
           label:
             item === 'label' ? '选项文本' : item === 'value' ? '选项值' : item,
           value: item,

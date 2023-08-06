@@ -465,7 +465,8 @@ export default class Drawer extends React.Component<DrawerProps> {
       onInit: this.handleFormInit,
       onSaved: this.handleFormSaved,
       onActionSensor: this.handleActionSensor,
-      syncLocation: false
+      syncLocation: false,
+      affixOffsetTop: 0
     };
 
     if (schema.type === 'form') {
@@ -979,8 +980,8 @@ export class DrawerRenderer extends Drawer {
     scoped.close(target);
   }
 
-  setData(values: object) {
-    return this.props.store.updateData(values);
+  setData(values: object, replace?: boolean) {
+    return this.props.store.updateData(values, undefined, replace);
   }
 
   getData() {

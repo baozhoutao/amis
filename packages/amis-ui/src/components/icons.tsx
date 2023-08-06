@@ -101,7 +101,7 @@ import NewEdit from '../icons/new-edit.svg';
 import RotateLeft from '../icons/rotate-left.svg';
 import RotateRight from '../icons/rotate-right.svg';
 import ScaleOrigin from '../icons/scale-origin.svg';
-import {isObject} from 'lodash';
+import isObject from 'lodash/isObject';
 
 // 兼容原来的用法，后续不直接试用。
 
@@ -250,18 +250,22 @@ export interface IconCheckedSchemaNew {
 export function Icon({
   icon,
   className,
-  wrapClassName,
   classPrefix = '',
   classNameProp,
   iconContent,
   vendor,
   cx: iconCx,
-  onClick = () => {}
+  onClick = () => {},
+  style
 }: {
   icon: string;
   iconContent?: string;
 } & React.ComponentProps<any>) {
   let cx = iconCx || cxClass;
+
+  if (typeof jest !== 'undefined' && icon) {
+    iconContent = '';
+  }
 
   if (!icon) {
     return null;
@@ -269,20 +273,15 @@ export function Icon({
 
   // 直接的icon dom
   if (React.isValidElement(icon)) {
-    return icon;
-  }
-
-  // 获取注册的icon
-  const Component = getIcon(icon);
-  if (Component) {
-    return (
-      <Component
-        onClick={onClick}
-        className={cx(className, `icon-${icon}`, classNameProp)}
-        // @ts-ignore
-        icon={icon}
-      />
-    );
+    return React.cloneElement(icon, {
+      ...((icon.props as any) || {}),
+      className: cxClass(
+        cx(className, classNameProp),
+        (icon.props as any).className
+      ),
+      style,
+      onClick
+    });
   }
 
   // 从css变量中获取icon
@@ -309,7 +308,22 @@ export function Icon({
         onClick={onClick}
         className={cx(iconContent, className, classNameProp)}
         ref={refFn}
+        style={style}
       ></div>
+    );
+  }
+
+  // 获取注册的icon
+  const Component = getIcon(icon);
+  if (Component) {
+    return (
+      <Component
+        onClick={onClick}
+        className={cx(className, `icon-${icon}`, classNameProp)}
+        // @ts-ignore
+        icon={icon}
+        style={style}
+      />
     );
   }
 
@@ -332,6 +346,7 @@ export function Icon({
       <svg
         onClick={onClick}
         className={cx('icon', 'icon-object', className, classNameProp)}
+        style={style}
       >
         <use
           xlinkHref={`#${(icon as IconCheckedSchema).id.replace(/^svg-/, '')}`}
@@ -348,6 +363,7 @@ export function Icon({
         onClick={onClick}
         className={cx(`${classPrefix}Icon`, className, classNameProp)}
         src={icon}
+        style={style}
       />
     );
   }
@@ -371,6 +387,7 @@ export function Icon({
       <i
         onClick={onClick}
         className={cx(icon, className, classNameProp, iconPrefix)}
+        style={style}
       />
     );
   }

@@ -1,4 +1,8 @@
-import {getI18nEnabled, registerEditorPlugin} from 'amis-editor-core';
+import {
+  JSONPipeOut,
+  getI18nEnabled,
+  registerEditorPlugin
+} from 'amis-editor-core';
 import {
   BasePlugin,
   ChangeEventContext,
@@ -11,7 +15,7 @@ import {defaultValue, getSchemaTpl} from 'amis-editor-core';
 import {jsonToJsonSchema} from 'amis-editor-core';
 import {EditorNodeType} from 'amis-editor-core';
 import {RendererPluginAction, RendererPluginEvent} from 'amis-editor-core';
-import {setVariable} from 'amis-core';
+import {RendererConfig, Schema, setVariable, someTree} from 'amis-core';
 import {getEventControlConfig} from '../../renderer/event-control/helper';
 
 // 用于脚手架的常用表单控件
@@ -933,44 +937,28 @@ export class FormPlugin extends BasePlugin {
     }
   }
 
-  async buildDataSchemas(node: EditorNodeType, region: EditorNodeType) {
+  async buildDataSchemas(
+    node: EditorNodeType,
+    region: EditorNodeType,
+    trigger?: EditorNodeType
+  ) {
     const jsonschema: any = {
-      $id: 'formItems',
-      type: 'object',
-      properties: {}
+      ...jsonToJsonSchema(JSONPipeOut(node.schema.data))
     };
-
     const pool = node.children.concat();
+
     while (pool.length) {
       const current = pool.shift() as EditorNodeType;
+      const schema = current.schema;
 
-      if (current.rendererConfig?.type === 'combo') {
-        const schema = current.schema;
-        if (schema.name) {
-          jsonschema.properties[schema.name] = {
-            type: 'array',
-            title: schema.label || schema.name,
-            items: current.info?.plugin?.buildDataSchemas
-              ? await current.info.plugin.buildDataSchemas(current, region)
-              : {
-                  type: 'object',
-                  properties: {}
-                }
-          };
-        }
-      } else if (current.rendererConfig?.isFormItem) {
-        const schema = current.schema;
-        if (schema.name) {
-          jsonschema.properties[schema.name] = current.info?.plugin
-            ?.buildDataSchemas
-            ? await current.info.plugin.buildDataSchemas(current, region)
-            : {
-                type: 'string',
-                title:
-                  typeof schema.label === 'string' ? schema.label : schema.name,
-                originalValue: schema.value // 记录原始值，循环引用检测需要
-              };
-        }
+      if (current.rendererConfig?.isFormItem && schema.name) {
+        jsonschema.properties[schema.name] =
+          await current.info.plugin.buildDataSchemas?.(
+            current,
+            region,
+            trigger,
+            node
+          );
       } else {
         pool.push(...current.children);
       }
@@ -991,6 +979,40 @@ export class FormPlugin extends BasePlugin {
       scope?.removeSchema(jsonschema.$id);
       scope?.addSchema(jsonschema);
     }
+  }
+
+  /**
+   * 为了让 form 的按钮可以点击编辑
+   */
+  patchSchema(schema: Schema, info: RendererConfig, props: any) {
+    if (
+      Array.isArray(schema.actions) ||
+      schema.wrapWithPanel === false ||
+      (Array.isArray(schema.body) &&
+        schema.body.some(
+          (item: any) =>
+            item &&
+            !!~['submit', 'button', 'button-group', 'reset'].indexOf(
+              (item as any)?.body?.[0]?.type ||
+                (item as any)?.body?.type ||
+                (item as any).type
+            )
+        ))
+    ) {
+      return;
+    }
+
+    return {
+      ...schema,
+      actions: [
+        {
+          type: 'submit',
+          label:
+            props?.translate(props?.submitText) || schema.submitText || '提交',
+          primary: true
+        }
+      ]
+    };
   }
 }
 
