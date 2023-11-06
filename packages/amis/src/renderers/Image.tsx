@@ -1,5 +1,10 @@
 import React from 'react';
-import {Renderer, RendererProps} from 'amis-core';
+import {
+  Renderer,
+  RendererProps,
+  CustomStyle,
+  setThemeClassName
+} from 'amis-core';
 import {filter} from 'amis-core';
 import {themeable, ThemeProps} from 'amis-core';
 import {autobind, getPropValue} from 'amis-core';
@@ -165,6 +170,10 @@ export interface ImageThumbProps
   index?: number;
   onLoad?: React.EventHandler<any>;
   overlays?: JSX.Element;
+  imageControlClassName?: string;
+  titleControlClassName?: string;
+  desControlClassName?: string;
+  iconControlClassName?: string;
 }
 
 interface ImageThumbState {
@@ -235,7 +244,11 @@ export class ImageThumb extends React.Component<
       enlargeAble,
       translate: __,
       overlays,
-      imageMode
+      imageMode,
+      titleControlClassName,
+      iconControlClassName,
+      imageControlClassName,
+      desControlClassName
     } = this.props;
 
     const {imageLoading} = this.state;
@@ -270,8 +283,13 @@ export class ImageThumb extends React.Component<
               data-position="bottom"
               target="_blank"
               onClick={this.handleEnlarge}
+              className={cx('Image-overlay-view-icon', iconControlClassName)}
             >
-              <Icon icon="view" className="icon" />
+              <Icon
+                icon="view"
+                className="icon"
+                iconContent="Image-view-icon"
+              />
             </a>
           ) : null}
           {overlays}
@@ -283,7 +301,8 @@ export class ImageThumb extends React.Component<
         className={cx(
           'Image',
           imageMode === 'original' ? 'Image--original' : 'Image--thumb',
-          className
+          className,
+          imageControlClassName
         )}
         style={href ? undefined : style} // 避免重复设置style
       >
@@ -320,12 +339,18 @@ export class ImageThumb extends React.Component<
         {title || caption ? (
           <div key="caption" className={cx('Image-info')}>
             {title ? (
-              <div className={cx('Image-title')} title={title}>
+              <div
+                className={cx('Image-title', titleControlClassName)}
+                title={title}
+              >
                 {title}
               </div>
             ) : null}
             {caption ? (
-              <div className={cx('Image-caption')} title={caption}>
+              <div
+                className={cx('Image-caption', desControlClassName)}
+                title={caption}
+              >
                 {caption}
               </div>
             ) : null}
@@ -417,7 +442,8 @@ export class ImageField extends React.Component<ImageFieldProps, object> {
       showToolbar,
       toolbarActions,
       imageGallaryClassName,
-      enlargeWithGallary
+      id,
+      themeCss
     } = this.props;
 
     onImageEnlarge &&
@@ -431,8 +457,11 @@ export class ImageField extends React.Component<ImageFieldProps, object> {
           thumbRatio,
           showToolbar,
           toolbarActions,
-          imageGallaryClassName,
-          enlargeWithGallary
+          imageGallaryClassName: `${imageGallaryClassName} ${setThemeClassName(
+            'imageGallaryClassName',
+            id,
+            themeCss
+          )} ${setThemeClassName('galleryControlClassName', id, themeCss)}`
         },
         this.props
       );
@@ -467,13 +496,20 @@ export class ImageField extends React.Component<ImageFieldProps, object> {
       placeholder,
       originalSrc,
       enlargeAble,
-      imageMode
+      imageMode,
+      wrapperCustomStyle,
+      id,
+      themeCss,
+      env
     } = this.props;
 
     const finnalSrc = src ? filter(src, data, '| raw') : '';
     let value = finnalSrc || getPropValue(this.props);
     const finnalHref = href ? filter(href, data, '| raw') : '';
-
+    const defaultValue =
+      defaultImage && !value
+        ? filter(defaultImage, data, '| raw')
+        : imagePlaceholder;
     return (
       <div
         className={cx(
@@ -481,7 +517,8 @@ export class ImageField extends React.Component<ImageFieldProps, object> {
           imageMode === 'original'
             ? 'ImageField--original'
             : 'ImageField--thumb',
-          className
+          className,
+          setThemeClassName('wrapperCustomStyle', id, wrapperCustomStyle)
         )}
         style={style}
         onClick={this.handleClick}
@@ -493,20 +530,65 @@ export class ImageField extends React.Component<ImageFieldProps, object> {
             thumbClassName={thumbClassName}
             height={height}
             width={width}
-            src={value ? value : defaultImage}
+            src={value ? value : defaultValue}
             href={finnalHref}
             title={filter(title, data)}
             caption={filter(imageCaption, data)}
             thumbMode={thumbMode}
             thumbRatio={thumbRatio}
             originalSrc={filter(originalSrc, data, '| raw') ?? value}
-            enlargeAble={enlargeAble && value !== defaultImage}
+            enlargeAble={enlargeAble && value !== defaultValue}
             onEnlarge={this.handleEnlarge}
             imageMode={imageMode}
+            imageControlClassName={setThemeClassName(
+              'imageControlClassName',
+              id,
+              themeCss
+            )}
+            titleControlClassName={setThemeClassName(
+              'titleControlClassName',
+              id,
+              themeCss
+            )}
+            desControlClassName={setThemeClassName(
+              'desControlClassName',
+              id,
+              themeCss
+            )}
+            iconControlClassName={setThemeClassName(
+              'iconControlClassName',
+              id,
+              themeCss
+            )}
           />
         ) : (
           <span className="text-muted">{placeholder}</span>
         )}
+        <CustomStyle
+          config={{
+            wrapperCustomStyle,
+            id,
+            themeCss,
+            classNames: [
+              {
+                key: 'imageControlClassName'
+              },
+              {
+                key: 'titleControlClassName'
+              },
+              {
+                key: 'desControlClassName'
+              },
+              {
+                key: 'iconControlClassName'
+              },
+              {
+                key: 'galleryControlClassName'
+              }
+            ]
+          }}
+          env={env}
+        />
       </div>
     );
   }

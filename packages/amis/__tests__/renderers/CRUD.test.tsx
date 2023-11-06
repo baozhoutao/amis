@@ -16,7 +16,10 @@
  * 13. keepItemSelectionOnPageChange & maxKeepItemSelectionLength & labelTpl
  * 14. autoGenerateFilter 自动生成查询表单
  * 15. group 分组
- * 16. api 返回格式支持取对象中的第一个数组
+ * 16. searchable & sortable & filterable
+ * 17. api 返回格式支持取对象中的第一个数组
+ * 18. CRUD 事件
+ * 19. fetchInitData silent 静默请求
  */
 
 import {
@@ -57,7 +60,7 @@ async function fetcher(config: any) {
   };
 }
 
-test('Renderer:crud basic interval headerToolbar footerToolbar', async () => {
+test('1. Renderer:crud basic interval headerToolbar footerToolbar', async () => {
   const mockFetcher = jest.fn(fetcher);
   const {container} = render(
     amisRender(
@@ -120,7 +123,7 @@ test('Renderer:crud basic interval headerToolbar footerToolbar', async () => {
   expect(mockFetcher).toHaveBeenCalledTimes(2);
 });
 
-test('Renderer:crud stopAutoRefreshWhen', async () => {
+test('2. Renderer:crud stopAutoRefreshWhen', async () => {
   const mockFetcher = jest.fn(fetcher);
   render(
     amisRender(
@@ -149,7 +152,7 @@ test('Renderer:crud stopAutoRefreshWhen', async () => {
   expect(mockFetcher).toHaveBeenCalledTimes(1);
 });
 
-test('Renderer:crud loadDataOnce', async () => {
+test('3. Renderer:crud loadDataOnce', async () => {
   const {container, findByRole, findByText} = render(
     amisRender(
       {
@@ -163,7 +166,6 @@ test('Renderer:crud loadDataOnce', async () => {
             columnsNum: 4,
             showBtnToolbar: false
           },
-          filterSettingSource: ['version'],
           columns: [
             {
               name: 'id',
@@ -251,7 +253,7 @@ test('Renderer:crud loadDataOnce', async () => {
   // expect(container).toMatchSnapshot();
 });
 
-test('Renderer:crud list', async () => {
+test('4. Renderer:crud list', async () => {
   const {container} = render(
     amisRender(
       {
@@ -281,7 +283,7 @@ test('Renderer:crud list', async () => {
   expect(container).toMatchSnapshot();
 });
 
-test('Renderer:crud cards', async () => {
+test('5. Renderer:crud cards', async () => {
   const {container} = render(
     amisRender(
       {
@@ -324,7 +326,7 @@ test('Renderer:crud cards', async () => {
   expect(container).toMatchSnapshot();
 });
 
-test('Renderer:crud source & alwaysShowPagination', async () => {
+test('6. Renderer:crud source & alwaysShowPagination', async () => {
   const {container} = render(
     amisRender(
       {
@@ -334,7 +336,7 @@ test('Renderer:crud source & alwaysShowPagination', async () => {
         },
         body: {
           type: 'crud',
-          source: 'fields',
+          source: '${fields}',
           alwaysShowPagination: true,
           columns: [
             {
@@ -360,7 +362,7 @@ test('Renderer:crud source & alwaysShowPagination', async () => {
   expect(container).toMatchSnapshot();
 });
 
-test('Renderer:crud filter', async () => {
+test('7. Renderer:crud filter', async () => {
   const mockFetcher = jest.fn(fetcher);
   const {container} = render(
     amisRender(
@@ -428,7 +430,7 @@ test('Renderer:crud filter', async () => {
   expect(query.customPerPageField).toBe(10);
 });
 
-test('Renderer:crud draggable & itemDraggableOn', async () => {
+test('8. Renderer:crud draggable & itemDraggableOn', async () => {
   const {container} = render(
     amisRender(
       {
@@ -481,7 +483,7 @@ test('Renderer:crud draggable & itemDraggableOn', async () => {
   expect(container.querySelectorAll('[icon=drag]').length).toBe(9);
 });
 
-test('Renderer:crud quickEdit quickSaveApi', async () => {
+test('9. Renderer:crud quickEdit quickSaveApi', async () => {
   const mockFetcher = jest.fn(fetcher);
   const {container, getAllByText} = render(
     amisRender(
@@ -540,7 +542,7 @@ test('Renderer:crud quickEdit quickSaveApi', async () => {
   expect(mockFetcher).toBeCalledTimes(3);
 });
 
-test('Renderer:crud quickSaveItemApi saveImmediately', async () => {
+test('10. Renderer:crud quickSaveItemApi saveImmediately', async () => {
   const mockFetcher = jest.fn(fetcher);
   const {container, getAllByText} = render(
     amisRender(
@@ -597,7 +599,7 @@ test('Renderer:crud quickSaveItemApi saveImmediately', async () => {
   expect(mockFetcher).toBeCalledTimes(3);
 });
 
-test('Renderer:crud bulkActions', async () => {
+test('11. Renderer:crud bulkActions', async () => {
   const {container} = render(
     amisRender(
       {
@@ -655,7 +657,7 @@ test('Renderer:crud bulkActions', async () => {
   });
 });
 
-test('Renderer: crud sortable & orderBy & orderDir & orderField', async () => {
+test('12. Renderer: crud sortable & orderBy & orderDir & orderField', async () => {
   const mockFetcher = jest.fn(fetcher);
   const {container} = render(
     amisRender(
@@ -700,7 +702,7 @@ test('Renderer: crud sortable & orderBy & orderDir & orderField', async () => {
   // expect(container).toMatchSnapshot();
 });
 
-test('Renderer: crud keepItemSelectionOnPageChange & maxKeepItemSelectionLength & labelTpl', async () => {
+test('13. enderer: crud keepItemSelectionOnPageChange & maxKeepItemSelectionLength & labelTpl', async () => {
   const mockFetcher = jest.fn(fetcher);
   const {container} = render(
     amisRender(
@@ -753,7 +755,7 @@ test('Renderer: crud keepItemSelectionOnPageChange & maxKeepItemSelectionLength 
   expect(container).toMatchSnapshot();
 });
 
-test('Renderer: crud autoGenerateFilter', async () => {
+test('14. Renderer: crud autoGenerateFilter', async () => {
   const mockFetcher = jest.fn(fetcher);
   const {container} = render(
     amisRender(
@@ -808,7 +810,7 @@ test('Renderer: crud autoGenerateFilter', async () => {
   ).toBeInTheDocument();
 });
 
-test('Renderer:crud group', async () => {
+test('15. Renderer:crud group', async () => {
   const {container} = render(
     amisRender(
       {
@@ -959,7 +961,7 @@ test('Renderer:crud group', async () => {
   ).toBe('2');
 });
 
-test('Renderer: crud searchable sortable filterable', async () => {
+test('16. Renderer: crud searchable sortable filterable', async () => {
   const mockFetcher = jest.fn(fetcher);
   const {container, debug, getByText} = render(
     amisRender(
@@ -1006,8 +1008,51 @@ test('Renderer: crud searchable sortable filterable', async () => {
   expect(container.querySelectorAll('[data-role="form-item"]').length).toBe(1);
 });
 
-describe('inner events', () => {
-  test('should call the callback function if provided while double clicking a row of the crud', async () => {
+test('17. should use the first array item in the response if provided', async () => {
+  const fetcher = jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        status: 0,
+        msg: 'ok',
+        data: {
+          whateverKey: [
+            {
+              engine: 'Chrome'
+            },
+            {
+              engine: 'IE'
+            }
+          ]
+        }
+      }
+    })
+  );
+  const {container} = render(
+    amisRender(
+      {
+        type: 'crud',
+        api: '/api/mock/sample',
+        columns: [
+          {
+            name: 'engine',
+            label: 'Rendering engine'
+          }
+        ]
+      },
+      {},
+      {
+        fetcher
+      }
+    )
+  );
+
+  waitFor(() => {
+    expect(container.querySelectorAll('tbody>tr').length).toBe(2);
+  });
+});
+
+describe('18. inner events', () => {
+  test('18-1. should call the callback function if provided while double clicking a row of the crud', async () => {
     const mockFn = jest.fn();
     render(
       amisRender(
@@ -1045,43 +1090,62 @@ describe('inner events', () => {
   });
 });
 
-test('should use the first array item in the response if provided', async () => {
-  const fetcher = jest.fn().mockImplementation(() =>
-    Promise.resolve({
-      data: {
-        status: 0,
-        msg: 'ok',
+test('19. fetchInitData silent true', async () => {
+  const notify = jest.fn();
+  const fetcher = jest.fn().mockImplementationOnce(() => {
+    return new Promise(resolve =>
+      resolve({
         data: {
-          whateverKey: [
-            {
-              engine: 'Chrome'
-            },
-            {
-              engine: 'IE'
-            }
-          ]
+          status: 500,
+          msg: 'Internal Error'
         }
-      }
-    })
-  );
+      })
+    );
+  });
   const {container} = render(
     amisRender(
       {
-        type: 'crud',
-        api: '/api/mock/sample',
-        columns: [
+        type: 'page',
+        body: [
           {
-            name: 'engine',
-            label: 'Rendering engine'
+            type: 'crud',
+            api: {
+              method: 'get',
+              url: '/api/mock/sample',
+              silent: true
+            },
+            columns: [
+              {
+                name: 'engine',
+                label: 'Rendering engine'
+              }
+            ]
+          },
+          {
+            type: 'crud',
+            api: {
+              method: 'get',
+              url: '/api/mock/sample',
+              silent: false
+            },
+            columns: [
+              {
+                name: 'engine',
+                label: 'Rendering engine'
+              }
+            ]
           }
         ]
       },
       {},
       {
-        fetcher
+        fetcher,
+        notify
       }
     )
   );
-  await wait(200);
-  expect(container.querySelectorAll('tbody>tr').length).toBe(2);
+
+  await waitFor(() => {
+    expect(notify).toBeCalledTimes(1);
+  });
 });

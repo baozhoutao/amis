@@ -5,7 +5,9 @@ import {
   FormBaseControl,
   prettyBytes,
   resolveEventData,
-  CustomStyle
+  CustomStyle,
+  setThemeClassName,
+  PlainObject
 } from 'amis-core';
 // import 'cropperjs/dist/cropper.css';
 const Cropper = React.lazy(() => import('react-cropper'));
@@ -39,6 +41,7 @@ import {filter} from 'amis-core';
 import isPlainObject from 'lodash/isPlainObject';
 import merge from 'lodash/merge';
 import omit from 'lodash/omit';
+import isNil from 'lodash/isNil';
 import {TplSchema} from '../Tpl';
 import Sortable from 'sortablejs';
 
@@ -219,6 +222,11 @@ export interface ImageControlSchema extends FormBaseControlSchema {
   multiple?: boolean;
 
   /**
+   * 可配置移动端的拍照功能，比如配置 `camera` 移动端只能拍照，等
+   */
+  capture?: string;
+
+  /**
    * 单选模式：当用户选中某个选项时，选项中的 value 将被作为该表单项的值提交，否则，整个选项对象都会作为该表单项的值提交。
    * 多选模式：选中的多个选项的 `value` 会通过 `delimiter` 连接起来，否则直接将以数组的形式提交值。
    */
@@ -357,6 +365,23 @@ export interface FileX extends File {
 export type InputImageRendererEvent = 'change' | 'success' | 'fail' | 'remove';
 export type InputImageRendererAction = 'clear';
 
+function formatIconThemeCss(themeCss: any) {
+  let addBtnControlClassName: PlainObject = {};
+  ['default', 'hover', 'active'].forEach(key => {
+    addBtnControlClassName[`color:${key}`] =
+      themeCss?.addBtnControlClassName?.[`icon-color:${key}`];
+  });
+  Object.keys(addBtnControlClassName).forEach((key: any) => {
+    if (!addBtnControlClassName[key]) {
+      delete addBtnControlClassName[key];
+    }
+  });
+  if (!isEmpty(addBtnControlClassName)) {
+    return {addBtnControlClassName};
+  }
+  return;
+}
+
 export default class ImageControl extends React.Component<
   ImageProps,
   ImageState
@@ -373,6 +398,7 @@ export default class ImageControl extends React.Component<
     delimiter: ',',
     autoUpload: true,
     multiple: false,
+    capture: undefined,
     dropCrop: true,
     initAutoFill: true
   };
@@ -639,12 +665,13 @@ export default class ImageControl extends React.Component<
       currentFiles = [];
     }
 
-    const allowed =
-      (multiple
-        ? maxLength
+    const allowed = !isNil(this.reuploadIndex)
+      ? reFiles.length
+      : (multiple
           ? maxLength
-          : reFiles.length + currentFiles.length
-        : 1) - currentFiles.length;
+            ? maxLength
+            : reFiles.length + currentFiles.length
+          : 1) - currentFiles.length;
 
     // 限制过多的错误文件
     if (allowed <= 0) {
@@ -1115,12 +1142,13 @@ export default class ImageControl extends React.Component<
       currentFiles = [];
     }
 
-    const allowed =
-      (multiple
-        ? maxLength
+    const allowed = !isNil(this.reuploadIndex)
+      ? files.length
+      : (multiple
           ? maxLength
-          : files.length + currentFiles.length
-        : 1) - currentFiles.length;
+            ? maxLength
+            : files.length + currentFiles.length
+          : 1) - currentFiles.length;
     const inputFiles: Array<FileX> = [];
 
     [].slice.call(files, 0, allowed).forEach((file: FileX) => {
@@ -1317,6 +1345,8 @@ export default class ImageControl extends React.Component<
     // Note: File类型字段放在后面，可以支持第三方云存储鉴权
     fd.append(fileField, file, (file as File).name || this.state.cropFileName);
 
+    api.data = fd;
+
     const env = this.props.env;
 
     if (!env || !env.fetcher) {
@@ -1324,7 +1354,7 @@ export default class ImageControl extends React.Component<
     }
 
     try {
-      return await env.fetcher(api, fd, {
+      return await env.fetcher(api, this.props.data, {
         method: 'post',
         cancelExecutor: (cancelExecutor: () => void) => {
           // 记录取消器，取消的时候要调用
@@ -1542,6 +1572,7 @@ export default class ImageControl extends React.Component<
       classnames: cx,
       disabled,
       multiple,
+      capture,
       accept,
       maxLength,
       autoUpload,
@@ -1556,9 +1587,6 @@ export default class ImageControl extends React.Component<
       maxSize,
       render,
       themeCss,
-      inputImageControlClassName,
-      addBtnControlClassName,
-      iconControlClassName,
       id,
       translate: __,
       draggable,
@@ -1587,7 +1615,11 @@ export default class ImageControl extends React.Component<
 
     return (
       <div
-        className={cx(`ImageControl`, className, inputImageControlClassName)}
+        className={cx(
+          `ImageControl`,
+          className,
+          setThemeClassName('inputImageControlClassName', id, themeCss)
+        )}
       >
         {cropFile ? (
           <div className={cx('ImageControl-cropperWrapper')}>
@@ -1659,7 +1691,7 @@ export default class ImageControl extends React.Component<
                   })
                 })}
               >
-                <input {...getInputProps()} />
+                <input {...getInputProps()} capture={capture as any} />
 
                 {isDragActive || isDragAccept || isDragReject ? (
                   <div
@@ -1676,7 +1708,7 @@ export default class ImageControl extends React.Component<
                       <div className={cx('ImageControl-itemList')}>
                         {files.map((file, key) => (
                           <div
-                            key={this.getFileKey(file)}
+                            key={`${this.getFileKey(file)}-${key}`}
                             className={cx(
                               'ImageControl-item',
                               {
@@ -1933,7 +1965,17 @@ export default class ImageControl extends React.Component<
                             },
                             fixedSize ? 'ImageControl-fixed-size' : '',
                             fixedSize ? fixedSizeClassName : '',
-                            addBtnControlClassName,
+                            setThemeClassName(
+                              'addBtnControlClassName',
+                              id,
+                              themeCss
+                            ),
+                            setThemeClassName(
+                              'addBtnControlClassName',
+                              id,
+                              formatIconThemeCss(themeCss),
+                              'icon'
+                            ),
                             error ? 'is-invalid' : ''
                           )}
                           style={frameImageStyle}
@@ -1945,7 +1987,11 @@ export default class ImageControl extends React.Component<
                             className="icon"
                             iconContent={cx(
                               ':ImageControl-addBtn-icon',
-                              iconControlClassName
+                              setThemeClassName(
+                                'iconControlClassName',
+                                id,
+                                themeCss
+                              )
                             )}
                           />
                           <span className={cx('ImageControl-addBtn-text')}>
@@ -1996,21 +2042,10 @@ export default class ImageControl extends React.Component<
             themeCss,
             classNames: [
               {
-                key: 'inputImageControlClassName',
-                value: inputImageControlClassName
-              }
-            ],
-            id
-          }}
-          env={env}
-        />
-        <CustomStyle
-          config={{
-            themeCss,
-            classNames: [
+                key: 'inputImageControlClassName'
+              },
               {
                 key: 'addBtnControlClassName',
-                value: addBtnControlClassName,
                 weights: {
                   hover: {
                     suf: ':not(:disabled):not(.is-disabled)'
@@ -2019,19 +2054,9 @@ export default class ImageControl extends React.Component<
                     suf: ':not(:disabled):not(.is-disabled)'
                   }
                 }
-              }
-            ],
-            id: id + '-addOn'
-          }}
-          env={env}
-        />
-        <CustomStyle
-          config={{
-            themeCss,
-            classNames: [
+              },
               {
                 key: 'iconControlClassName',
-                value: iconControlClassName,
                 weights: {
                   default: {
                     suf: ' svg'
@@ -2039,7 +2064,32 @@ export default class ImageControl extends React.Component<
                 }
               }
             ],
-            id: id + '-icon'
+            id
+          }}
+          env={env}
+        />
+        <CustomStyle
+          config={{
+            themeCss: formatIconThemeCss(themeCss),
+            classNames: [
+              {
+                key: 'addBtnControlClassName',
+                weights: {
+                  default: {
+                    inner: 'svg'
+                  },
+                  hover: {
+                    suf: ':not(:disabled):not(.is-disabled)',
+                    inner: 'svg'
+                  },
+                  active: {
+                    suf: ':not(:disabled):not(.is-disabled)',
+                    inner: 'svg'
+                  }
+                }
+              }
+            ],
+            id: id && id + '-icon'
           }}
           env={env}
         />

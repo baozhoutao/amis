@@ -9,6 +9,7 @@ import findLastIndex from 'lodash/findLastIndex';
 import find from 'lodash/find';
 import isEqual from 'lodash/isEqual';
 import filter from 'lodash/filter';
+import debounce from 'lodash/debounce';
 import intersection from 'lodash/intersection';
 import Sortable from 'sortablejs';
 
@@ -23,6 +24,7 @@ import {
   guid,
   autobind
 } from 'amis-core';
+import {resizeSensor} from 'amis-core';
 import {Icon} from '../icons';
 import CheckBox from '../Checkbox';
 import Spinner, {SpinnerExtraProps} from '../Spinner';
@@ -32,13 +34,14 @@ import HeadCellFilter from './HeadCellFilter';
 import HeadCellSelect from './HeadCellSelect';
 import ItemActionsWrapper from './ItemActionsWrapper';
 import Cell from './Cell';
+import ColGroup from './ColGroup';
 
 export interface ColumnProps {
   title: string | React.ReactNode | Function;
   name: string;
   className?: Function;
   children?: Array<ColumnProps>;
-  render: Function;
+  render?: Function;
   fixed?: boolean | string;
   width?: number | string;
   sorter?: (a: any, b: any) => number | boolean; // 设置为true时，执行onSort，否则执行前端排序
@@ -51,6 +54,7 @@ export interface ColumnProps {
   filterDropdown?: Function | React.ReactNode; // 列筛选 filterDropdown的优先级更高 和filters两者不能并存
   align?: string; // left/right/center
   breakpoint?: '*' | 'xs' | 'sm' | 'md' | 'lg';
+  [propName: string]: any;
 }
 
 export interface ThProps extends ColumnProps {
@@ -119,7 +123,7 @@ export interface SortProps {
 
 export interface TableProps extends ThemeProps, LocaleProps, SpinnerExtraProps {
   title: string | React.ReactNode | Function;
-  footer: string | React.ReactNode | Function;
+  footer?: string | React.ReactNode | Function;
   className?: string;
   dataSource: Array<any>;
   classnames: ClassNamesFn;
@@ -152,6 +156,7 @@ export interface TableProps extends ThemeProps, LocaleProps, SpinnerExtraProps {
   rowClassName?: Function;
   lineHeight?: string; // 可设置large、middle固定高度，不设置则跟随内容
   showHeader?: boolean; // 是否展示表头
+  tableLayout?: string; // auto fixed
   onSelect?: Function;
   onSelectAll?: Function;
   itemActions?: Function;
@@ -167,7 +172,14 @@ export interface TableState {
   selectedRowKeys: Array<string | number>;
   dataSource: Array<any>;
   expandedRowKeys: Array<string | number>;
-  colWidths: Array<number>;
+  colWidths: {
+    [name: string]: {
+      width: number;
+      realWidth: number;
+      minWidth: number;
+      originWidth: number;
+    };
+  };
   hoverRow: {
     rowIndex?: number;
     record: any;
@@ -331,7 +343,8 @@ export class Table extends React.PureComponent<TableProps, TableState> {
     columns: [],
     indentSize: 15,
     placeholder: '暂无数据',
-    showHeader: true
+    showHeader: true,
+    tableLayout: 'auto'
   };
 
   constructor(props: TableProps) {
@@ -358,7 +371,7 @@ export class Table extends React.PureComponent<TableProps, TableState> {
           ? props.expandable.defaultExpandedRowKeys || []
           : [])
       ],
-      colWidths: [],
+      colWidths: {},
       hoverRow: null
     };
   }
@@ -380,31 +393,23 @@ export class Table extends React.PureComponent<TableProps, TableState> {
   sortable: Sortable | null;
   // 记录点击起始横坐标
   resizeStart: number;
-  // 记录点击对应col
-  resizeTarget: Array<HTMLElement | null>;
+  resizeTarget?: HTMLElement;
   resizeWidth: number;
+  resizeIndex: number;
 
   tableDom: React.RefObject<HTMLDivElement> = React.createRef();
   theadDom: React.RefObject<HTMLTableSectionElement> = React.createRef();
   tbodyDom: React.RefObject<HTMLTableSectionElement> = React.createRef();
   contentDom: React.RefObject<HTMLDivElement> = React.createRef();
   headerDom: React.RefObject<HTMLDivElement> = React.createRef();
-  bodyDom: React.RefObject<HTMLDivElement> = React.createRef();
   tfootDom: React.RefObject<HTMLTableSectionElement> = React.createRef();
   footDom: React.RefObject<HTMLDivElement> = React.createRef();
 
-  getColWidths() {
-    const childrens = this.tbodyDom.current?.children[0]?.children || [];
-    const colWidths: Array<any> = new Array(childrens ? childrens.length : 0);
-
-    // 分2个table实现表格 为了实现上下table的宽度统一
-    for (let i = 0; i < childrens.length; i++) {
-      const child: any = childrens[i];
-      colWidths[i] = child ? child.offsetWidth : null;
-    }
-
-    return colWidths;
-  }
+  toDispose: Array<() => void> = [];
+  updateTableInfoLazy = debounce(this.updateTableInfo.bind(this), 250, {
+    trailing: true,
+    leading: false
+  });
 
   getSelectedRows(
     dataSource: Array<any>,
@@ -438,18 +443,6 @@ export class Table extends React.PureComponent<TableProps, TableState> {
     this.updateHeadSummaryFixedRow(tbodyDom);
   }
 
-  updateColWidths() {
-    this.setState({colWidths: this.getColWidths()}, () => {
-      if (hasFixedColumn(this.props.columns)) {
-        const theadDom =
-          this.theadDom && (this.theadDom.current as HTMLElement);
-        const thColumns = this.thColumns;
-        this.updateTheadFixedRow(theadDom, thColumns);
-        this.updateTableBodyFixed();
-      }
-    });
-  }
-
   updateTableFixedRows() {
     if (hasFixedColumn(this.props.columns)) {
       const headerDom =
@@ -463,6 +456,11 @@ export class Table extends React.PureComponent<TableProps, TableState> {
 
       const tfootDom = this.tfootDom && (this.tfootDom.current as HTMLElement);
       tfootDom && this.updateFootSummaryFixedRow(tfootDom);
+
+      const theadDom = this.theadDom && (this.theadDom.current as HTMLElement);
+      const thColumns = this.thColumns;
+      this.updateTheadFixedRow(theadDom, thColumns);
+      this.updateTableBodyFixed();
     }
   }
 
@@ -486,15 +484,20 @@ export class Table extends React.PureComponent<TableProps, TableState> {
           ref.current.addEventListener('wheel', this.onWheel.bind(this))
       );
     }
+
     current && this.updateTableDom(current);
 
-    if (this.props.draggable) {
+    if (this.props.draggable && this.tbodyDom?.current) {
       this.initDragging();
     }
 
     this.updateStickyHeader();
 
-    this.updateColWidths();
+    const currentNode = findDOMNode(this) as HTMLElement;
+
+    this.toDispose.push(
+      resizeSensor(currentNode, this.updateTableInfoLazy, false, 'width')
+    );
   }
 
   componentDidUpdate(prevProps: TableProps, prevState: TableState) {
@@ -507,17 +510,7 @@ export class Table extends React.PureComponent<TableProps, TableState> {
           dataSource: [...this.props.dataSource]
         },
         () => {
-          if (this.props.draggable) {
-            if (this.sortable) {
-              this.destroyDragging();
-            }
-
-            this.initDragging();
-          }
-
           this.updateTableFixedRows();
-
-          this.updateColWidths();
         }
       );
     }
@@ -601,6 +594,10 @@ export class Table extends React.PureComponent<TableProps, TableState> {
     if (prevProps.sticky !== this.props.sticky) {
       this.updateStickyHeader();
     }
+
+    if (prevProps.columns !== this.props.columns) {
+      this.updateTableFixedRows();
+    }
   }
 
   componentWillUnmount() {
@@ -613,12 +610,17 @@ export class Table extends React.PureComponent<TableProps, TableState> {
     );
 
     this.destroyDragging();
+
+    this.toDispose.forEach(fn => fn());
+    this.toDispose = [];
+
+    this.updateTableInfoLazy.cancel();
   }
 
   initDragging() {
     const {classnames: cx, onDrag} = this.props;
 
-    this.sortable = new Sortable(this.tbodyDom.current as HTMLElement, {
+    this.sortable = new Sortable(this.tbodyDom?.current as HTMLElement, {
       group: 'table',
       animation: 150,
       handle: `.${cx('Table-dragCell')}`,
@@ -699,6 +701,9 @@ export class Table extends React.PureComponent<TableProps, TableState> {
     const children = row.children;
     for (let i = 0; i < children.length; i++) {
       const dom = children[i] as HTMLElement;
+
+      dom.style.removeProperty('left');
+
       const fixed = columns[i] ? columns[i].fixed || '' : '';
       if (isFixedLeftColumn(fixed)) {
         dom.style.left =
@@ -709,11 +714,16 @@ export class Table extends React.PureComponent<TableProps, TableState> {
             ? getAfterRightWidth(children, i, columns) + 'px'
             : '0';
       }
+
+      dom.classList.remove(cx('Table-cell-fix-left-last'));
+      dom.classList.remove(cx('Table-cell-fix-right-first'));
+      dom.classList.remove(cx('Table-cell-fix-right-first-prev'));
     }
     // 最后一个左fixed的添加样式
     let leftIndex = findLastIndex(columns, column =>
       isFixedLeftColumn(column.fixed)
     );
+
     if (leftIndex > -1) {
       children[leftIndex]?.classList.add(cx('Table-cell-fix-left-last'));
     }
@@ -800,84 +810,31 @@ export class Table extends React.PureComponent<TableProps, TableState> {
     }
   }
 
-  renderColGroup(colWidths?: Array<number>) {
-    const {rowSelection, classnames: cx, expandable, draggable} = this.props;
+  renderColGroup(showReal?: boolean) {
+    const {scroll, tableLayout} = this.props;
 
-    const tdColumns = this.tdColumns;
-    const isExpandable = this.isExpandableTable();
-    const extraCount =
-      this.getExtraColumnCount() - (this.isRightExpandable() ? 1 : 0);
-    const isLeftExpandable = this.isLeftExpandable();
-    const isRightExpandable = this.isRightExpandable();
-
-    const expandableCol =
-      !draggable && isExpandable ? (
-        <col
-          className={cx('Table-expand-col')}
-          style={{
-            width: (expandable?.columnWidth || DefaultCellWidth) + 'px'
-          }}
-        ></col>
-      ) : null;
-
+    const isFixed = !!((scroll && scroll.x) || tableLayout === 'fixed');
     return (
-      <colgroup>
-        {draggable ? (
-          <col
-            className={cx('Table-drag-col')}
-            style={{width: DefaultCellWidth + 'px'}}
-          ></col>
-        ) : null}
-        {!draggable && rowSelection ? (
-          <col
-            className={cx('Table-selection-col')}
-            style={{
-              width: (rowSelection.columnWidth || DefaultCellWidth) + 'px'
-            }}
-          ></col>
-        ) : null}
-        {isLeftExpandable ? expandableCol : null}
-        {tdColumns.map((data, index) => {
-          const width = colWidths
-            ? colWidths[index + extraCount - (isRightExpandable ? 1 : 0)]
-            : data.width;
-
-          return (
-            <col
-              key={index}
-              style={{width: typeof width === 'number' ? width + 'px' : width}}
-              className={
-                data.className ? cx(`Table-colgroup-${data.className}`) : ''
-              }
-            ></col>
-          );
-        })}
-        {isRightExpandable ? expandableCol : null}
-      </colgroup>
+      <ColGroup
+        columns={this.tdColumns}
+        colWidths={this.state.colWidths}
+        isFixed={isFixed}
+        syncTableWidth={this.syncTableWidth}
+        initTableWidth={this.initTableWidth}
+        showReal={showReal}
+      ></ColGroup>
     );
   }
 
   onResizeMouseDown(event: any, index: number) {
     // 点击记录起始坐标
     this.resizeStart = event.clientX;
+    this.resizeTarget = event.currentTarget;
 
-    // 用2个table实现的时候 会出现2个colgroup
-    // 理论上 宽度要始终保持一致
-    const colGroup = this.tableDom.current?.getElementsByTagName('colgroup');
-    let currentWidth = 0;
-    const children = [];
-    if (colGroup) {
-      for (let i = 0; i < colGroup.length; i++) {
-        const child = colGroup[i].children[index] as HTMLElement;
-        if (child) {
-          currentWidth = child.offsetWidth;
-          children.push(child);
-        }
-      }
-    }
-
-    this.resizeWidth = currentWidth;
-    this.resizeTarget = children;
+    const column = this.tdColumns[index];
+    this.resizeIndex = index;
+    this.resizeWidth = this.state.colWidths[column.name].width;
+    this.resizeTarget!.classList.add('is-resizing');
 
     document.addEventListener('mousemove', this.onResizeMouseMove);
     document.addEventListener('mouseup', this.onResizeMouseUp);
@@ -888,37 +845,38 @@ export class Table extends React.PureComponent<TableProps, TableState> {
   @autobind
   onResizeMouseMove(event: any) {
     // 点击了调整列宽
-    if (this.resizeStart) {
+    if (this.resizeTarget) {
       // 计算横向移动距离
       const distance = event.clientX - this.resizeStart;
-
+      const column = this.tdColumns[this.resizeIndex];
       let newWidth = 0;
-      // 调宽列
-      // tableLayout为auto情况下 实际宽度并不受width实际控制 表格会根据列内容自动调整
-      // 设置scroll.x或者column设置了width 都会将tableLayout设置为fixed
       if (distance > 0) {
         newWidth = this.resizeWidth + distance;
       } else {
         // 缩短列
-        newWidth = Math.max(this.resizeWidth + distance, DefaultCellWidth);
+        newWidth = Math.max(
+          this.resizeWidth + distance,
+          DefaultCellWidth,
+          column.minWidth || 0
+        );
       }
-      this.resizeTarget.forEach(target => {
-        if (target) {
-          target.style.width = newWidth + 'px';
-        }
-      });
+      const colWidths = this.state.colWidths;
+      colWidths[column.name].width = newWidth;
+      this.setState({colWidths: {...colWidths}});
     }
     event && event.stopPropagation();
   }
 
   @autobind
   onResizeMouseUp(event: MouseEvent) {
+    this.resizeTarget!.classList.remove('is-resizing');
+
     document.removeEventListener('mousemove', this.onResizeMouseMove);
     document.removeEventListener('mouseup', this.onResizeMouseUp);
 
-    this.resizeStart = 0;
+    this.resizeStart = -1;
     this.resizeWidth = 0;
-    this.resizeTarget = [];
+    delete this.resizeTarget;
   }
 
   renderTHead() {
@@ -964,6 +922,7 @@ export class Table extends React.PureComponent<TableProps, TableState> {
           rowSpan={thColumns.length}
           fixed={expandable && expandable.fixed ? 'left' : ''}
           className={cx('Table-row-expand-icon-cell')}
+          style={{width: (expandable?.columnWidth || DefaultCellWidth) + 'px'}}
         ></Cell>
       ) : null;
 
@@ -1007,6 +966,8 @@ export class Table extends React.PureComponent<TableProps, TableState> {
                   wrapperComponent="th"
                   rowSpan={thColumns.length}
                   className={cx('Table-dragCell')}
+                  style={{width: DefaultCellWidth + 'px'}}
+                  col="drag"
                 ></Cell>
               ) : null}
               {!draggable && rowSelection && index === 0 ? (
@@ -1015,6 +976,10 @@ export class Table extends React.PureComponent<TableProps, TableState> {
                   rowSpan={thColumns.length}
                   fixed={rowSelection.fixed ? 'left' : ''}
                   className={cx('Table-checkCell')}
+                  style={{
+                    width: (rowSelection.columnWidth || DefaultCellWidth) + 'px'
+                  }}
+                  col="select"
                 >
                   {rowSelection.type !== 'radio'
                     ? [
@@ -1121,18 +1086,16 @@ export class Table extends React.PureComponent<TableProps, TableState> {
                   cIndex = tdColumns.findIndex(c => c.name === item.name);
                 }
                 const children = !item.children?.length ? (
-                  <span>
-                    <>
-                      {sort}
-                      {filter}
-                      {resizable ? (
-                        <i
-                          className={cx('Table-thead-resizable')}
-                          onMouseDown={e => this.onResizeMouseDown(e, cIndex)}
-                        ></i>
-                      ) : null}
-                    </>
-                  </span>
+                  <>
+                    {sort}
+                    {filter}
+                    {resizable ? (
+                      <i
+                        className={cx('Table-thead-resizable')}
+                        onMouseDown={e => this.onResizeMouseDown(e, cIndex)}
+                      ></i>
+                    ) : null}
+                  </>
                 ) : null;
 
                 return (
@@ -1148,6 +1111,7 @@ export class Table extends React.PureComponent<TableProps, TableState> {
                     })}
                     groupId={item.groupId}
                     depth={item.depth}
+                    col={cIndex > -1 ? cIndex.toString() : undefined}
                   >
                     {typeof item.title === 'function'
                       ? item.title(children)
@@ -1194,7 +1158,7 @@ export class Table extends React.PureComponent<TableProps, TableState> {
     record?: any,
     rowIndex?: number
   ) {
-    const {classnames: cx, onRow} = this.props;
+    const {onRow, itemActions} = this.props;
 
     if (onRow && onRow.onRowMouseEnter) {
       const prevented = await onRow.onRowMouseEnter(event, record, rowIndex);
@@ -1203,22 +1167,10 @@ export class Table extends React.PureComponent<TableProps, TableState> {
       }
     }
 
-    let parent = event.target;
-    while (parent && parent.tagName !== 'TR') {
-      parent = parent.parentElement;
-    }
-
-    if (parent && !parent.classList.contains(cx('Table-row-disabled'))) {
-      for (let i = 0; i < parent.children.length; i++) {
-        const td = parent.children[i];
-        td.classList.add(cx('Table-cell-row-hover')); // 保证有列fixed的时候样式一致
-      }
-    }
-
-    if (record) {
+    if (record && itemActions) {
       let target = event.target;
-      if (target.tagName !== 'TR') {
-        target = target.closest('tr');
+      if (target?.tagName !== 'TR') {
+        target = target?.closest('tr');
       }
 
       this.setState({hoverRow: {target, rowIndex, record}});
@@ -1230,30 +1182,16 @@ export class Table extends React.PureComponent<TableProps, TableState> {
     record?: any,
     rowIndex?: number
   ) {
-    const {classnames: cx, onRow} = this.props;
+    const {onRow} = this.props;
 
-    if (onRow && onRow.onRowMouseLeave) {
-      const prevented = await onRow.onRowMouseLeave(event, record, rowIndex);
-      if (prevented) {
-        return;
-      }
-    }
-
-    let parent = event.target;
-    while (parent && parent.tagName !== 'TR') {
-      parent = parent.parentElement;
-    }
-
-    if (parent) {
-      for (let i = 0; i < parent.children.length; i++) {
-        const td = parent.children[i];
-        td.classList.remove(cx('Table-cell-row-hover'));
-      }
-    }
+    onRow &&
+      onRow.onRowMouseLeave &&
+      onRow.onRowMouseLeave(event, record, rowIndex);
   }
 
   onMouseLeave() {
-    this.setState({hoverRow: null});
+    const {itemActions} = this.props;
+    itemActions && this.setState({hoverRow: null});
   }
 
   onExpandRows(data: Array<any>) {
@@ -1451,22 +1389,24 @@ export class Table extends React.PureComponent<TableProps, TableState> {
         <span
           className={cx('Table-row-indent', `indent-level-${levels.length}`)}
           style={
-            levels.length > 0
-              ? {paddingLeft: indentSize * levels.length + 'px'}
-              : {}
+            levels.length > 0 ? {width: indentSize * levels.length + 'px'} : {}
           }
         ></span>
       ) : null;
 
     const cells = tdColumns.map((item, i) => {
+      // 为了支持灵活合并单元格，renderers层的Table2传递的render方法，返回{children: <ReactElement>, props: {rowSpan, colSpan}}
+      // 但直接使用amis-ui的table，render方法一般直接返回ReactElement
       const render =
         item.render && typeof item.render === 'function'
-          ? item.render(data[item.name], data, rowIndex, i)
+          ? item.render(data[item.name], data, rowIndex, i, levels)
           : null;
       let props = {rowSpan: 1, colSpan: 1};
       let children = render;
-      if (render && isObject(render)) {
-        props = render.props;
+      if (render && !React.isValidElement(render) && isObject(render)) {
+        if (render.props) {
+          props = render.props;
+        }
         children = render.children;
         // 如果合并行 且有展开行，那么合并行不生效
         if (props.rowSpan > 1 && isExpandableRow && hasChildrenRow) {
@@ -1488,6 +1428,7 @@ export class Table extends React.PureComponent<TableProps, TableState> {
           className={cx({
             [`${className}`]: !!className
           })}
+          col={i > -1 ? i.toString() : undefined}
         >
           <div
             className={cx('Table-cell-wrapper', {
@@ -1629,7 +1570,9 @@ export class Table extends React.PureComponent<TableProps, TableState> {
       headSummary,
       scroll,
       placeholder,
-      sticky
+      sticky,
+      loading,
+      loadingConfig
     } = this.props;
 
     const tdColumns = this.tdColumns;
@@ -1640,7 +1583,23 @@ export class Table extends React.PureComponent<TableProps, TableState> {
         {!hasScrollY && !sticky && headSummary
           ? this.renderSummaryRow(headSummary)
           : null}
-        {!this.state.dataSource.length ? (
+        {!!loading ? (
+          <tr className={cx('Table-row', 'Table-loading-row')}>
+            <Cell colSpan={tdColumns.length + colCount}>
+              <div className={cx('Table-loading')}>
+                {typeof loading === 'boolean' ? (
+                  <Spinner
+                    overlay
+                    show={loading}
+                    loadingConfig={loadingConfig}
+                  />
+                ) : React.isValidElement(loading) ? (
+                  loading
+                ) : null}
+              </div>
+            </Cell>
+          </tr>
+        ) : !this.state.dataSource.length ? (
           <tr className={cx('Table-row', 'Table-empty-row')}>
             <Cell colSpan={tdColumns.length + colCount}>
               <div className={cx('Table-empty')}>
@@ -1832,7 +1791,7 @@ export class Table extends React.PureComponent<TableProps, TableState> {
   }
 
   onTableScroll(event: any) {
-    const scrollDomRefs = [this.headerDom, this.bodyDom, this.footDom];
+    const scrollDomRefs = [this.headerDom, this.contentDom, this.footDom];
 
     const {target, scrollLeft} = event;
 
@@ -1846,35 +1805,22 @@ export class Table extends React.PureComponent<TableProps, TableState> {
     this.updateTableDom(target);
   }
 
-  renderLoading() {
-    const {classnames: cx, loading, loadingConfig} = this.props;
-    return (
-      <div className={cx('Table-loading')}>
-        {typeof loading === 'boolean' ? (
-          <Spinner loadingConfig={loadingConfig} />
-        ) : (
-          loading
-        )}
-      </div>
-    );
-  }
-
   renderTable() {
     const {
       scroll,
       footSummary,
-      loading,
       showHeader,
       itemActions,
+      tableLayout,
       classnames: cx
     } = this.props;
 
-    // 设置了横向滚动轴 则table的table-layout为fixed
     const hasScrollX = scroll && scroll.x;
     const hoverRow = this.state.hoverRow;
 
-    const tableLayout = hasScrollX ? 'fixed' : 'auto';
-    const tableStyle = hasScrollX ? {width: scroll.x + 'px'} : {};
+    const tableStyle = hasScrollX
+      ? {width: scroll.x + 'px', tableLayout: 'fixed'}
+      : {};
 
     return (
       <div
@@ -1892,15 +1838,17 @@ export class Table extends React.PureComponent<TableProps, TableState> {
           </ItemActionsWrapper>
         ) : null}
         <table
-          style={{...tableStyle, tableLayout}}
+          style={{
+            ...tableStyle,
+            tableLayout: tableLayout === 'fixed' ? 'fixed' : 'auto'
+          }}
           className={cx('Table-table')}
         >
           {this.renderColGroup()}
           {showHeader ? this.renderTHead() : null}
-          {!loading ? this.renderTBody() : null}
-          {!loading && footSummary ? this.renderTFoot() : null}
+          {this.renderTBody()}
+          {footSummary ? this.renderTFoot() : null}
         </table>
-        {loading ? this.renderLoading() : null}
       </div>
     );
   }
@@ -1922,8 +1870,7 @@ export class Table extends React.PureComponent<TableProps, TableState> {
     const tableStyle = {};
     if (scroll && (scroll.y || scroll.x)) {
       Object.assign(tableStyle, {
-        width: scroll && scroll.x ? scroll.x + 'px' : '100%',
-        tableLayout: 'fixed'
+        width: scroll && scroll.x ? scroll.x + 'px' : '100%'
       });
     }
 
@@ -1935,8 +1882,11 @@ export class Table extends React.PureComponent<TableProps, TableState> {
         })}
         style={style}
       >
-        <table className={cx('Table-table')} style={tableStyle}>
-          {this.renderColGroup(this.state.colWidths)}
+        <table
+          className={cx('Table-table')}
+          style={{...tableStyle, tableLayout: 'fixed'}}
+        >
+          {this.renderColGroup(true)}
           {showHeader ? this.renderTHead() : null}
           {headSummary ? (
             <tbody>{this.renderSummaryRow(headSummary)}</tbody>
@@ -1958,8 +1908,7 @@ export class Table extends React.PureComponent<TableProps, TableState> {
       });
 
       Object.assign(tableStyle, {
-        width: scroll && scroll.x ? scroll.x + 'px' : '100%',
-        tableLayout: 'fixed'
+        width: scroll && scroll.x ? scroll.x + 'px' : '100%'
       });
     }
 
@@ -1967,7 +1916,7 @@ export class Table extends React.PureComponent<TableProps, TableState> {
 
     return (
       <div
-        ref={this.bodyDom}
+        ref={this.contentDom}
         className={cx('Table-body')}
         style={style}
         onMouseLeave={this.onMouseLeave.bind(this)}
@@ -1980,7 +1929,10 @@ export class Table extends React.PureComponent<TableProps, TableState> {
               : null}
           </ItemActionsWrapper>
         ) : null}
-        <table className={cx('Table-table')} style={tableStyle}>
+        <table
+          className={cx('Table-table')}
+          style={{...tableStyle, tableLayout: 'fixed'}}
+        >
           {this.renderColGroup()}
           {this.renderTBody()}
         </table>
@@ -2008,16 +1960,171 @@ export class Table extends React.PureComponent<TableProps, TableState> {
   }
 
   renderScrollTable() {
-    const {footSummary, loading, classnames: cx} = this.props;
+    const {footSummary, classnames: cx} = this.props;
 
     return (
       <div className={cx('Table-container')}>
         {this.renderScrollTableHeader()}
-        {!loading ? this.renderScrollTableBody() : null}
-        {!loading && footSummary ? this.renderScrollTableFoot() : null}
-        {loading ? this.renderLoading() : null}
+        {this.renderScrollTableBody()}
+        {footSummary ? this.renderScrollTableFoot() : null}
       </div>
     );
+  }
+
+  @autobind
+  syncTableWidth() {
+    const tbodyDom = this.tbodyDom.current;
+    if (!tbodyDom) {
+      return;
+    }
+    const cols = [].slice.call(
+      tbodyDom?.querySelectorAll(':scope>tr>td[data-col]')
+    );
+    const colWidths: any = {};
+    cols.forEach((col: HTMLElement) => {
+      const index = parseInt(col.getAttribute('data-col')!, 10);
+      const column = this.tdColumns[index];
+      const item = this.state.colWidths[column.name];
+      if (column) {
+        colWidths[column.name] = {
+          width:
+            item?.originWidth !== column?.width ? column?.width : item?.width,
+          minWidth: column?.minWidth,
+          realWidth: col.offsetWidth,
+          originWidth: column?.width
+        };
+      }
+    });
+
+    if (!isEqual(colWidths, this.state.colWidths)) {
+      this.setState({colWidths});
+    }
+  }
+
+  @autobind
+  initTableWidth() {
+    const tableWrapperDom = this.contentDom.current;
+    if (!tableWrapperDom) {
+      return;
+    }
+    const {scroll, tableLayout} = this.props;
+
+    const table = tableWrapperDom.querySelector('table');
+    const tableWidth =
+      scroll && scroll.x ? scroll.x : tableWrapperDom!.offsetWidth;
+    const thead = this.theadDom?.current;
+    let tbody: HTMLElement | null = null;
+    const htmls: Array<string> = [];
+    const isFixed = tableLayout === 'fixed' || (scroll && scroll.x);
+    const someSettedWidth = this.tdColumns.some(column => column.width);
+
+    const minWidths: {
+      [propName: string]: number;
+    } = {};
+
+    // fixed 模式需要参考 auto 获得列最小宽度
+    if (isFixed) {
+      tbody = table?.querySelector(':scope>tbody') || null;
+      htmls.push(
+        `<table style="table-layout:auto!important;width:0!important;min-width:0!important;" class="${table?.className}">${thead?.outerHTML}</table>`
+      );
+    }
+
+    if (someSettedWidth || isFixed) {
+      htmls.push(
+        `<table style="table-layout:auto!important;min-width:${tableWidth}px!important;width:${tableWidth}px!important;" class="${
+          table?.className
+        }">${thead ? thead.outerHTML : ''}${
+          tbody ? `<tbody>${tbody.innerHTML}</tbody>` : ''
+        }</table>`
+      );
+    }
+
+    if (!htmls.length) {
+      return;
+    }
+
+    const div = document.createElement('div');
+    div.className = 'amis-scope'; // jssdk 里面 css 会在这一层
+    div.style.cssText += `visibility: hidden!important;`;
+    div.innerHTML = htmls.join('');
+    let ths1: Array<HTMLTableCellElement> = [];
+    let ths2: Array<HTMLTableCellElement> = [];
+
+    if (isFixed) {
+      ths1 = [].slice.call(
+        div.querySelectorAll(':scope>table:first-child>thead>tr>th[data-col]')
+      );
+    }
+
+    if (someSettedWidth || isFixed) {
+      ths2 = [].slice.call(
+        div.querySelectorAll(':scope>table:last-child>thead>tr>th[data-col]')
+      );
+    }
+
+    ths1.forEach(th => {
+      th.style.cssText += 'width: 0';
+    });
+    ths2.forEach((th, index) => {
+      const column = this.tdColumns[index];
+
+      th.style.cssText += `${
+        typeof column?.width === 'number'
+          ? `width: ${column?.width}px;`
+          : column?.width
+          ? `width: ${column?.width};`
+          : ''
+      }`;
+    });
+
+    document.body.appendChild(div);
+
+    const colWidths: any = {};
+    ths1.forEach((th: HTMLTableCellElement) => {
+      const index = parseInt(th.getAttribute('data-col')!, 10);
+      const column = this.tdColumns[index];
+      minWidths[index] = th.clientWidth;
+      if (colWidths[index]) {
+        colWidths[column?.name].minWidth = th.clientWidth;
+      } else {
+        colWidths[column?.name] = {minWidth: th.clientWidth};
+      }
+    });
+
+    ths2.forEach((col: HTMLElement) => {
+      const index = parseInt(col.getAttribute('data-col')!, 10);
+      const column = this.tdColumns[index];
+      if (column && (column.width || isFixed)) {
+        const width = Math.max(
+          typeof column.width === 'number' ? column.width : col.clientWidth,
+          minWidths[index] || 0
+        );
+        if (colWidths[column?.name]) {
+          colWidths[column?.name].width = width;
+        } else {
+          colWidths[column?.name] = {width};
+        }
+        if (column.width) {
+          colWidths[column?.name].originWidth = column.width;
+        }
+      }
+    });
+
+    if (!isEqual(colWidths, this.state.colWidths)) {
+      this.setState({colWidths});
+    }
+
+    document.body.removeChild(div);
+  }
+
+  @autobind
+  updateTableInfo() {
+    if (this.resizeTarget) {
+      return;
+    }
+
+    this.initTableWidth();
   }
 
   render() {

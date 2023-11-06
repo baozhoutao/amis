@@ -24,6 +24,7 @@ export interface StatusControlProps extends FormControlProps {
   // 应用于不需要 bulkChange 的场景，如
   noBulkChange?: boolean;
   noBulkChangeData?: any;
+  defaultTrue?: boolean; // 默认是否开启，用于“可见”等默认开启的配置项
   onDataChange?: (value: any) => void;
 }
 
@@ -58,7 +59,8 @@ export class StatusControl extends React.Component<
       noBulkChangeData,
       expressionName,
       name,
-      trueValue
+      trueValue,
+      defaultTrue
     } = this.props;
 
     const formData: StatusFormData = {
@@ -78,7 +80,11 @@ export class StatusControl extends React.Component<
     }
     return {
       checked:
-        ctx[name] == trueValue || typeof ctx[expressionName] === 'string',
+        ctx[name] == trueValue ||
+        typeof ctx[expressionName] === 'string' ||
+        (!!defaultTrue &&
+          ctx[name] == undefined &&
+          ctx[expressionName] == undefined),
       formData
     };
   }
@@ -93,13 +99,25 @@ export class StatusControl extends React.Component<
   @autobind
   handleSwitch(value: boolean) {
     const {trueValue, falseValue} = this.props;
+    const {expression, statusType = 1} = this.state.formData || {};
     this.setState({checked: value == trueValue ? true : false}, () => {
       const {onBulkChange, noBulkChange, onDataChange, expressionName, name} =
         this.props;
-      const newData = {
-        [name]: value == trueValue ? trueValue : falseValue,
+
+      const newData: Record<string, any> = {
+        [name]: value == falseValue ? falseValue : undefined,
         [expressionName]: undefined
       };
+      if (value == trueValue) {
+        switch (statusType) {
+          case 1:
+            newData[name] = trueValue;
+            break;
+          case 2:
+            newData[expressionName] = expression;
+            break;
+        }
+      }
       !noBulkChange && onBulkChange && onBulkChange(newData);
       onDataChange && onDataChange(newData);
     });

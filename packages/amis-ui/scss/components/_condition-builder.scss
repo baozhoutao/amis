@@ -77,6 +77,10 @@
         box-shadow: none !important;
       }
 
+      &-valueWrap {
+        padding-right: 0;
+      }
+
       &-arrow {
         display: none;
       }
@@ -236,6 +240,22 @@
 //     border-left-color: #2468f1;
 //   }
 // }
+
+.#{$ns}CBIf {
+  margin-left: 10px;
+  font-size: 16px;
+  color: #84868c;
+
+  &:hover {
+    font-size: 16px;
+  }
+
+  &.is-active {
+    color: #2468f1;
+  }
+  cursor: pointer;
+  // margin-left: auto;
+}
 
 .#{$ns}CBGroupOrItem {
   position: relative;

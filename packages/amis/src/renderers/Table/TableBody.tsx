@@ -2,7 +2,7 @@ import React from 'react';
 import {ClassNamesFn, RendererEvent} from 'amis-core';
 
 import {SchemaNode, ActionObject} from 'amis-core';
-import {TableRow} from './TableRow';
+import TableRow from './TableRow';
 import {filter} from 'amis-core';
 import {observer} from 'mobx-react';
 import {trace, reaction} from 'mobx';
@@ -64,6 +64,10 @@ export interface TableBodyProps extends LocaleProps {
 
 @observer
 export class TableBody extends React.Component<TableBodyProps> {
+  componentDidMount(): void {
+    this.props.store.initTableWidth();
+  }
+
   renderRows(
     rows: Array<any>,
     columns = this.props.columns,
@@ -87,7 +91,8 @@ export class TableBody extends React.Component<TableBodyProps> {
       onRowClick,
       onRowDbClick,
       onRowMouseEnter,
-      onRowMouseLeave
+      onRowMouseLeave,
+      store
     } = this.props;
 
     return rows.map((item: IRow, rowIndex: number) => {
@@ -95,6 +100,7 @@ export class TableBody extends React.Component<TableBodyProps> {
       const doms = [
         <TableRow
           {...itemProps}
+          store={store}
           itemAction={itemAction}
           classnames={cx}
           checkOnItemClick={checkOnItemClick}
@@ -132,6 +138,7 @@ export class TableBody extends React.Component<TableBodyProps> {
           doms.push(
             <TableRow
               {...itemProps}
+              store={store}
               itemAction={itemAction}
               classnames={cx}
               checkOnItemClick={checkOnItemClick}
@@ -278,6 +285,9 @@ export class TableBody extends React.Component<TableBodyProps> {
           const lastColumn = item.lastColumn;
 
           const style = {...item.style};
+          if (item.align) {
+            style.textAlign = item.align;
+          }
           const [stickyStyle, stickyClassName] = store.getStickyStyles(
             lastColumn.fixed === 'right' ? lastColumn : firstColumn,
             store.filteredColumns

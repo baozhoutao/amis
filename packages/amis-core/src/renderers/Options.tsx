@@ -54,7 +54,6 @@ import isPlainObject from 'lodash/isPlainObject';
 import {normalizeOptions} from '../utils/normalizeOptions';
 import {optionValueCompare} from '../utils/optionValueCompare';
 import type {Option} from '../types';
-import isEqual from 'lodash/isEqual';
 import {resolveEventData} from '../utils';
 
 export {Option};
@@ -104,6 +103,11 @@ export interface FormOptionsControl extends FormBaseControl {
    * 分割符
    */
   delimiter?: string;
+
+  /**
+   * 多选模式，值太多时是否避免折行
+   */
+  valuesNoWrap?: boolean;
 
   /**
    * 开启后将选中的选项 value 的值封装为数组，作为当前表单项的值。
@@ -401,11 +405,7 @@ export function registerOptionsControl(config: OptionsConfig) {
         return true;
       } else if (nextProps.formItem?.expressionsInOptions) {
         return true;
-      } else if (nextProps.formItem?.filteredOptions) {
-        return true;
-      }
-
-      if (anyChanged(detectProps, this.props, nextProps)) {
+      } else if (anyChanged(detectProps, this.props, nextProps)) {
         return true;
       }
 
@@ -1035,11 +1035,12 @@ export function registerOptionsControl(config: OptionsConfig) {
           });
 
           if (!payload.ok) {
-            env.notify(
-              'error',
-              (addApi as BaseApiObject)?.messages?.failed ??
-                (payload.msg || __('Options.createFailed'))
-            );
+            !(addApi as BaseApiObject).silent &&
+              env.notify(
+                'error',
+                (addApi as BaseApiObject)?.messages?.failed ??
+                  (payload.msg || __('Options.createFailed'))
+              );
             result = null;
           } else {
             result = payload.data || result;
@@ -1047,7 +1048,7 @@ export function registerOptionsControl(config: OptionsConfig) {
         } catch (e) {
           result = null;
           console.error(e);
-          env.notify('error', e.message);
+          !(addApi as BaseApiObject).silent && env.notify('error', e.message);
         }
       }
 
@@ -1161,11 +1162,12 @@ export function registerOptionsControl(config: OptionsConfig) {
           );
 
           if (!payload.ok) {
-            env.notify(
-              'error',
-              (editApi as BaseApiObject)?.messages?.failed ??
-                (payload.msg || __('saveFailed'))
-            );
+            !(editApi as BaseApiObject).silent &&
+              env.notify(
+                'error',
+                (editApi as BaseApiObject)?.messages?.failed ??
+                  (payload.msg || __('saveFailed'))
+              );
             result = null;
           } else {
             result = payload.data || result;
@@ -1173,7 +1175,7 @@ export function registerOptionsControl(config: OptionsConfig) {
         } catch (e) {
           result = null;
           console.error(e);
-          env.notify('error', e.message);
+          !(editApi as BaseApiObject).silent && env.notify('error', e.message);
         }
       }
 
@@ -1248,11 +1250,12 @@ export function registerOptionsControl(config: OptionsConfig) {
             method: 'delete'
           });
           if (!result.ok) {
-            env.notify(
-              'error',
-              (deleteApi as BaseApiObject)?.messages?.failed ??
-                (result.msg || __('deleteFailed'))
-            );
+            !(deleteApi as BaseApiObject).silent &&
+              env.notify(
+                'error',
+                (deleteApi as BaseApiObject)?.messages?.failed ??
+                  (result.msg || __('deleteFailed'))
+              );
             return;
           }
         }
@@ -1281,7 +1284,7 @@ export function registerOptionsControl(config: OptionsConfig) {
         }
       } catch (e) {
         console.error(e);
-        env.notify('error', e.message);
+        !(deleteApi as BaseApiObject).silent && env.notify('error', e.message);
       }
     }
 

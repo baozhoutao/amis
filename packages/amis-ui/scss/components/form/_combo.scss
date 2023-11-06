@@ -20,6 +20,9 @@
     margin-top: var(--gap-xs);
     display: inline-block;
   }
+  &-itemInner {
+    margin-right: px2rem(12px);
+  }
 
   &-addBtn {
     > svg {
@@ -106,6 +109,13 @@
     }
   }
 
+  .#{$ns}Tabs--radio .is-active &-tab-delBtn {
+    color: var(--Tabs--radio-active-color);
+    &:hover {
+      color: var(--Tabs--radio-active-color);
+    }
+  }
+
   &-tab-delBtn {
     color: var(--combo-multi-delBtn-color);
     cursor: pointer;
@@ -113,8 +123,8 @@
     display: inline-block;
 
     > svg {
-      width: px2rem(11px);
-      height: px2rem(11px);
+      width: px2rem(14px);
+      height: px2rem(14px);
     }
 
     &:hover {
@@ -336,7 +346,11 @@
 
     .#{$ns}Combo-item {
       align-items: center;
-      border-bottom: var(--Form-input-borderWidth) solid var(--borderColor);
+      position: relative;
+
+      &::before {
+        @include hairline-bottom(var(--borderColor));
+      }
     }
   }
 

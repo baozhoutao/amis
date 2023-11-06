@@ -29,7 +29,7 @@ import {
   isArrayChildrenModified,
   filterTarget
 } from 'amis-core';
-import {Icon, Table, Spinner, BadgeObject, SpinnerExtraProps} from 'amis-ui';
+import {Icon, Table, BadgeObject, SpinnerExtraProps} from 'amis-ui';
 import type {
   SortProps,
   ColumnProps,
@@ -152,6 +152,8 @@ export interface ColumnSchema {
    * 配置快速编辑功能
    */
   quickEdit?: SchemaQuickEdit;
+
+  width?: string | number;
 }
 
 export interface RowSelectionOptionsSchema {
@@ -269,7 +271,7 @@ export interface TableSchema2 extends BaseSchema {
   /**
    * 表格可选择配置
    */
-  rowSelection?: RowSelectionSchema;
+  rowSelection?: RowSelectionSchema | boolean;
 
   /**
    * 表格行可展开配置
@@ -385,6 +387,8 @@ export interface TableSchema2 extends BaseSchema {
    * 设置ID字段名 作用同keyFiled 兼容原CURD属性
    */
   primaryField?: string;
+
+  tableLayout?: 'fixed' | 'auto';
 }
 
 // 事件调整 对应CRUD2里的事件配置也需要同步修改
@@ -435,6 +439,37 @@ export interface Table2Props extends RendererProps, SpinnerExtraProps {
 export default class Table2 extends React.Component<Table2Props, object> {
   static contextType = ScopedContext;
 
+  static propsList: Array<string> = [
+    'source',
+    'columnsTogglable',
+    'columns',
+    'items',
+    'rowSelection',
+    'expandable',
+    'sticky',
+    'itemBadge',
+    'popOverContainer',
+    'keyField',
+    'childrenColumnName',
+    'rowClassNameExpr',
+    'lineHeight',
+    'bordered',
+    'footer',
+    'maxKeepItemSelectionLength',
+    'keepItemSelectionOnPageChange',
+    'itemActions',
+    'headingClassName',
+    'footSummary',
+    'headSummary',
+    'saveImmediately',
+    'selectable',
+    'multiple',
+    'primaryField',
+    'hideQuickSaveBtn',
+    'selected',
+    'placeholder'
+  ];
+
   renderedToolbars: Array<string> = [];
   tableRef?: any;
   subForms: any = {};
@@ -461,7 +496,7 @@ export default class Table2 extends React.Component<Table2Props, object> {
     store.update({
       columnsTogglable,
       columns,
-      rowSelectionKeyField: rowSelection?.keyField || primaryField || keyField
+      rowSelectionKeyField: primaryField || rowSelection?.keyField || keyField
     });
     Table2.syncRows(store, props, undefined) && this.syncSelected();
   }
@@ -521,7 +556,7 @@ export default class Table2 extends React.Component<Table2Props, object> {
     let selectedRowKeys: Array<string | number> = [];
     const keyField = store.keyField;
     // selectedRowKeysExpr比selectedRowKeys优先级高
-    if (typeof props.selected !== 'undefined') {
+    if (Array.isArray(props.selected)) {
       selectedRowKeys = props.selected.map((item: any) => item[keyField]) || [];
     } else {
       if (props.rowSelection && props.rowSelection.selectedRowKeysExpr) {
@@ -541,14 +576,13 @@ export default class Table2 extends React.Component<Table2Props, object> {
         selectedRowKeys = [...props.rowSelection.selectedRowKeys];
       }
     }
-
     if (updateRows && selectedRowKeys.length > 0) {
       store.updateSelected(selectedRowKeys);
     }
 
     let expandedRowKeys: Array<string | number> = [];
     const expandableKeyField =
-      props.expandable?.keyField || props.primaryField || props.keyField;
+      props.primaryField || props.expandable?.keyField || props.keyField;
     if (props.expandable && props.expandable.expandedRowKeysExpr) {
       rows.forEach((row: any, index: number) => {
         const flag = evalExpression(
@@ -620,7 +654,7 @@ export default class Table2 extends React.Component<Table2Props, object> {
     ) {
       store.update({
         rowSelectionKeyField:
-          props.rowSelection?.keyField || props.primaryField || props.keyField
+          props.primaryField || props.rowSelection?.keyField || props.keyField
       });
     }
 
@@ -672,6 +706,7 @@ export default class Table2 extends React.Component<Table2Props, object> {
       // title 不应该传递到 cell-field 的 column 中，否则部分组件会将其渲染出来
       // 但是 cell-field 需要这个字段，展示列的名称
       const {width, children, title, ...rest} = schema;
+
       return render(
         'cell-field',
         {
@@ -694,7 +729,7 @@ export default class Table2 extends React.Component<Table2Props, object> {
 
     // Header、Footer等SchemaObject转化成ReactNode
     if (schema && isObject(schema)) {
-      return render(key || 'field', {...schema, data: props.data}, props);
+      return render(key || 'field', {...schema, data: props?.data}, props);
     } else if (Array.isArray(schema)) {
       const renderers: Array<any> = [];
       schema.forEach((s, i) =>
@@ -703,7 +738,7 @@ export default class Table2 extends React.Component<Table2Props, object> {
             key || 'field',
             {
               ...s,
-              data: props.data
+              data: props?.data
             },
             {...props, key: i}
           )
@@ -711,7 +746,9 @@ export default class Table2 extends React.Component<Table2Props, object> {
       );
       return renderers;
     }
-
+    if (typeof schema === 'string') {
+      return filter(schema, props?.data);
+    }
     return schema;
   }
   // editor传来的处理过的column 还可能包含其他字段
@@ -786,13 +823,16 @@ export default class Table2 extends React.Component<Table2Props, object> {
               text: string,
               record: any,
               rowIndex: number,
-              colIndex: number
+              colIndex: number,
+              levels?: Array<number>
             ) => {
               const props: RenderProps = {};
-              const item = store.getRowByIndex(rowIndex) || {};
+              const item =
+                store.getRowByIndex(rowIndex, [...(levels || [])]) || {};
+
               const obj = {
                 children: this.renderCellSchema(column, {
-                  data: item.locals,
+                  data: record,
                   value: column.name
                     ? resolveVariable(
                         column.name,
@@ -1122,7 +1162,7 @@ export default class Table2 extends React.Component<Table2Props, object> {
             api: saveImmediately.api,
             reload: options?.reload
           },
-          values
+          item.locals
         );
       return;
     }
@@ -1304,6 +1344,7 @@ export default class Table2 extends React.Component<Table2Props, object> {
     rowItem: any,
     rowIndex?: number
   ) {
+    event?.persist?.();
     const {dispatchEvent, data, onRow} = this.props;
 
     const rendererEvent = await dispatchEvent(
@@ -1326,6 +1367,7 @@ export default class Table2 extends React.Component<Table2Props, object> {
     rowItem: any,
     rowIndex?: number
   ) {
+    event?.persist?.();
     const {dispatchEvent, data, onRow} = this.props;
 
     const rendererEvent = await dispatchEvent(
@@ -1346,7 +1388,7 @@ export default class Table2 extends React.Component<Table2Props, object> {
   async handleOrderChange(
     oldIndex: number,
     newIndex: number,
-    levels: Array<string>
+    levels: Array<number>
   ) {
     const {store} = this.props;
     const rowItem = store.getRowByIndex(oldIndex, levels);
@@ -1407,7 +1449,7 @@ export default class Table2 extends React.Component<Table2Props, object> {
         store.updateSelected(selected);
         break;
       case 'expand':
-        const expandableKey = expandable?.keyField || primaryField || key;
+        const expandableKey = primaryField || expandable?.keyField || key;
         const expanded: Array<any> = [];
         const collapse: Array<any> = [];
         // value值控制展开1个
@@ -1501,7 +1543,16 @@ export default class Table2 extends React.Component<Table2Props, object> {
 
       if (expandable && expandable.type) {
         expandableConfig.expandedRowRender = (record: any, rowIndex: number) =>
-          this.renderSchema('expandableBody', {...expandable}, {data: record});
+          this.renderSchema(
+            'expandableBody',
+            {...expandable},
+            {
+              data: {
+                ...this.props.data,
+                record
+              }
+            }
+          );
       }
 
       if (expandable.expandedRowClassNameExpr) {
@@ -1514,7 +1565,13 @@ export default class Table2 extends React.Component<Table2Props, object> {
     }
 
     let rowSelectionConfig: any = null;
-    if (rowSelection) {
+    if (selectable) {
+      rowSelectionConfig = {
+        type: multiple === false ? 'radio' : '', // rowSelection.type不设置 默认为多选
+        selectedRowKeys: store.currentSelectedRowKeys,
+        maxSelectedLength: maxKeepItemSelectionLength
+      };
+    } else if (rowSelection) {
       const {selectedRowKeys, selections, ...rest} = rowSelection;
       rowSelectionConfig = {
         selectedRowKeys: store.currentSelectedRowKeys,
@@ -1578,12 +1635,6 @@ export default class Table2 extends React.Component<Table2Props, object> {
           });
         });
       }
-    } else if (selectable) {
-      rowSelectionConfig = {
-        type: multiple === false ? 'radio' : '', // rowSelection.type不设置 默认为多选
-        selectedRowKeys: store.currentSelectedRowKeys,
-        maxSelectedLength: maxKeepItemSelectionLength
-      };
     }
 
     const rowClassName = (record: any, rowIndex: number) => {
@@ -1636,12 +1687,14 @@ export default class Table2 extends React.Component<Table2Props, object> {
       };
     }
 
+    const schemaProps = {data: this.props.data};
+
     return (
       <Table
         {...rest}
         onRef={this.getRef}
-        title={this.renderSchema('title', title, {data: this.props.data})}
-        footer={this.renderSchema('footer', footer, {data: this.props.data})}
+        title={this.renderSchema('title', title, schemaProps)}
+        footer={this.renderSchema('footer', footer, schemaProps)}
         columns={this.buildColumns(store.filteredColumns)}
         dataSource={store.dataSource}
         rowSelection={rowSelectionConfig}
@@ -1649,8 +1702,8 @@ export default class Table2 extends React.Component<Table2Props, object> {
         expandable={expandableConfig}
         footSummary={this.buildSummary('footSummary', footSummary)}
         headSummary={this.buildSummary('headSummary', headSummary)}
-        loading={this.renderSchema('loading', loading)}
-        placeholder={this.renderSchema('placeholder', placeholder)}
+        loading={this.renderSchema('loading', loading, schemaProps)}
+        placeholder={this.renderSchema('placeholder', placeholder, schemaProps)}
         onSelect={this.handleSelected}
         onSelectAll={this.handleSelected}
         onSort={this.handleSort}
@@ -1670,10 +1723,8 @@ export default class Table2 extends React.Component<Table2Props, object> {
 
   renderHeading() {
     let {
-      title,
       store,
       hideQuickSaveBtn,
-      data,
       classnames: cx,
       headingClassName,
       saveImmediately,
@@ -1700,7 +1751,6 @@ export default class Table2 extends React.Component<Table2Props, object> {
     }
 
     if (
-      title ||
       (quickSaveApi &&
         !saveImmediately &&
         !isModifiedColumnSaveImmediately &&
@@ -1757,8 +1807,6 @@ export default class Table2 extends React.Component<Table2Props, object> {
                 {__('Table.discard')}
               </button>
             </span>
-          ) : title ? (
-            filter(title, data)
           ) : (
             ''
           )}
@@ -1770,13 +1818,7 @@ export default class Table2 extends React.Component<Table2Props, object> {
   }
 
   render() {
-    const {
-      classnames: cx,
-      style,
-      loading = false,
-      loadingConfig,
-      store
-    } = this.props;
+    const {classnames: cx, style, store} = this.props;
 
     this.renderedToolbars = []; // 用来记录哪些 toolbar 已经渲染了
 
@@ -1792,8 +1834,6 @@ export default class Table2 extends React.Component<Table2Props, object> {
         {this.renderActions('header')}
         {heading}
         {this.renderTable()}
-
-        <Spinner overlay show={loading} loadingConfig={loadingConfig} />
       </div>
     );
   }

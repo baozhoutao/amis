@@ -8,7 +8,7 @@ import {
   resolveEventData
 } from 'amis-core';
 import {Select, Spinner} from 'amis-ui';
-import {Api} from 'amis-core';
+import {Api, ApiObject} from 'amis-core';
 import {isEffectiveApi} from 'amis-core';
 import {isMobile, createObject} from 'amis-core';
 import {ActionObject} from 'amis-core';
@@ -215,7 +215,7 @@ export default class ChainedSelectControl extends React.Component<
             );
           })
           .catch(e => {
-            env.notify('error', e.message);
+            !(source as ApiObject)?.silent && env.notify('error', e.message);
           });
       }
     );
@@ -317,7 +317,7 @@ export default class ChainedSelectControl extends React.Component<
       joinValues,
       extractValue,
       multiple,
-      useMobileUI,
+      mobileUI,
       env,
       ...rest
     } = this.props;
@@ -329,12 +329,11 @@ export default class ChainedSelectControl extends React.Component<
 
     const hasStackLoading = this.state.stack.find((a: StackItem) => a.loading);
 
-    const mobileUI = useMobileUI && isMobile();
     return (
       <div className={cx(`${ns}ChainedSelectControl`, className)}>
         <Select
           {...rest}
-          useMobileUI={useMobileUI}
+          mobileUI={mobileUI}
           popOverContainer={
             mobileUI
               ? env?.getModalContainer
@@ -354,7 +353,7 @@ export default class ChainedSelectControl extends React.Component<
           visible === false || loading ? null : (
             <Select
               {...rest}
-              useMobileUI={useMobileUI}
+              mobileUI={mobileUI}
               popOverContainer={
                 mobileUI
                   ? env.getModalContainer

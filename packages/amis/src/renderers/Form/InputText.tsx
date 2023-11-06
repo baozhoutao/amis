@@ -8,7 +8,9 @@ import {
   CustomStyle,
   getValueByPath,
   PopOver,
-  Overlay
+  Overlay,
+  formatInputThemeCss,
+  setThemeClassName
 } from 'amis-core';
 import {ActionObject} from 'amis-core';
 import Downshift, {StateChangeOptions} from 'downshift';
@@ -61,6 +63,12 @@ export interface TextControlSchema extends FormOptionsSchema {
    * 接口可以返回匹配到的选项，帮助用户输入。
    */
   autoComplete?: SchemaApi;
+
+  /**
+   * 配置原生 input 的 autoComplete 属性
+   * @default off
+   */
+  nativeAutoComplete?: string;
 
   /**
    * 边框模式，全边框，还是半边框，或者没边框。
@@ -197,7 +205,8 @@ export default class TextControl extends React.PureComponent<
     valueField: 'value',
     placeholder: '',
     allowInputText: true,
-    trimContents: true
+    trimContents: true,
+    nativeAutoComplete: 'off'
   };
 
   componentDidMount() {
@@ -285,8 +294,17 @@ export default class TextControl extends React.PureComponent<
     }
   }
 
-  clearValue() {
-    const {onChange, resetValue} = this.props;
+  async clearValue() {
+    const {onChange, resetValue, dispatchEvent} = this.props;
+
+    const rendererEvent = await dispatchEvent(
+      'clear',
+      resolveEventData(this.props, {value: resetValue})
+    );
+
+    if (rendererEvent?.prevented) {
+      return;
+    }
 
     onChange(resetValue);
     this.setState(
@@ -358,7 +376,13 @@ export default class TextControl extends React.PureComponent<
       },
       () => {
         if (trimContents && value && typeof value === 'string') {
-          onChange(value.trim());
+          const trimedValue = value.trim();
+
+          // 因为下发给 Input 的 value 可能不会变，所以这里需要手动同步一下
+          if (this.input) {
+            this.input.value = trimedValue;
+          }
+          onChange(trimedValue);
         }
       }
     );
@@ -685,7 +709,11 @@ export default class TextControl extends React.PureComponent<
       minLength,
       translate: __,
       loadingConfig,
-      popOverContainer
+      popOverContainer,
+      themeCss,
+      css,
+      id,
+      nativeAutoComplete
     } = this.props;
     let type = this.props.type?.replace(/^(?:native|input)\-/, '');
 
@@ -708,7 +736,8 @@ export default class TextControl extends React.PureComponent<
           let filtedOptions =
             inputValue && isOpen && !autoComplete
               ? matchSorter(options, inputValue, {
-                  keys: [labelField || 'label', valueField || 'value']
+                  keys: [labelField || 'label', valueField || 'value'],
+                  threshold: matchSorter.rankings.CONTAINS
                 })
               : options;
           const indices = isOpen
@@ -741,6 +770,13 @@ export default class TextControl extends React.PureComponent<
               className={cx(
                 `TextControl-input TextControl-input--withAC`,
                 inputControlClassName,
+                setThemeClassName('inputControlClassName', id, themeCss || css),
+                setThemeClassName(
+                  'inputControlClassName',
+                  id,
+                  themeCss || css,
+                  'inner'
+                ),
                 inputOnly ? className : '',
                 {
                   'is-opened': isOpen,
@@ -794,7 +830,7 @@ export default class TextControl extends React.PureComponent<
                     maxLength,
                     minLength
                   })}
-                  autoComplete="off"
+                  autoComplete={nativeAutoComplete}
                   size={10}
                   className={cx(nativeInputClassName)}
                 />
@@ -857,7 +893,7 @@ export default class TextControl extends React.PureComponent<
                             className: cx(`TextControl-sugItem`, {
                               'is-highlight':
                                 highlightedIndex === indices[value],
-                              'is-disabled': option.disabled
+                              'is-disabled': option.disabled || option.readOnly
                             })
                           })}
                           key={value}
@@ -918,7 +954,11 @@ export default class TextControl extends React.PureComponent<
       data,
       showCounter,
       maxLength,
-      minLength
+      minLength,
+      themeCss,
+      css,
+      id,
+      nativeAutoComplete
     } = this.props;
 
     const type = this.props.type?.replace(/^(?:native|input)\-/, '');
@@ -930,6 +970,13 @@ export default class TextControl extends React.PureComponent<
           {
             [`TextControl-input--border${ucFirst(borderMode)}`]: borderMode
           },
+          setThemeClassName('inputControlClassName', id, themeCss || css),
+          setThemeClassName(
+            'inputControlClassName',
+            id,
+            themeCss || css,
+            'inner'
+          ),
           inputControlClassName,
           inputOnly ? className : ''
         )}
@@ -952,7 +999,7 @@ export default class TextControl extends React.PureComponent<
           min={min}
           maxLength={maxLength}
           minLength={minLength}
-          autoComplete="off"
+          autoComplete={nativeAutoComplete}
           size={10}
           step={step}
           onChange={this.handleNormalInputChange}
@@ -1018,9 +1065,13 @@ export default class TextControl extends React.PureComponent<
       render,
       data,
       disabled,
+      readOnly,
       inputOnly,
       static: isStatic,
-      addOnClassName
+      addOnClassName,
+      themeCss,
+      css,
+      id
     } = this.props;
 
     const addOn: any =
@@ -1037,13 +1088,25 @@ export default class TextControl extends React.PureComponent<
       addOn && !isStatic ? (
         addOn.actionType ||
         ~['button', 'submit', 'reset', 'action'].indexOf(addOn.type) ? (
-          <div className={cx(`${ns}TextControl-button`, addOnClassName)}>
+          <div
+            className={cx(
+              `${ns}TextControl-button`,
+              addOnClassName,
+              setThemeClassName('addOnClassName', id, themeCss || css, 'addOn')
+            )}
+          >
             {render('addOn', addOn, {
               disabled
             })}
           </div>
         ) : (
-          <div className={cx(`${ns}TextControl-addOn`, addOnClassName)}>
+          <div
+            className={cx(
+              `${ns}TextControl-addOn`,
+              addOnClassName,
+              setThemeClassName('addOnClassName', id, themeCss || css, 'addOn')
+            )}
+          >
             {iconElement}
             {addOn.label ? filter(addOn.label, data) : null}
           </div>
@@ -1058,7 +1121,7 @@ export default class TextControl extends React.PureComponent<
       ? cx(className, `${ns}TextControl`, {
           [`${ns}TextControl--withAddOn`]: !!addOnDom,
           'is-focused': this.state.isFocused,
-          'is-disabled': disabled
+          'is-disabled': disabled || readOnly
         })
       : cx(`${ns}TextControl`, {
           [`${ns}TextControl--withAddOn`]: !!addOnDom
@@ -1077,20 +1140,6 @@ export default class TextControl extends React.PureComponent<
    * 处理input的自定义样式
    */
   @autobind
-  formatInputThemeCss() {
-    const {themeCss, css} = this.props;
-    const inputFontThemeCss: any = {inputControlClassName: {}};
-    const inputControlClassNameObject =
-      (themeCss || css)?.inputControlClassName || {};
-    for (let key in inputControlClassNameObject) {
-      if (~key.indexOf('font')) {
-        inputFontThemeCss.inputControlClassName[key] =
-          inputControlClassNameObject[key];
-      }
-    }
-    return inputFontThemeCss;
-  }
-
   @supportStatic()
   render(): JSX.Element {
     const {
@@ -1099,9 +1148,7 @@ export default class TextControl extends React.PureComponent<
       autoComplete,
       themeCss,
       css,
-      inputControlClassName,
       id,
-      addOnClassName,
       env,
       classPrefix: ns
     } = this.props;
@@ -1119,10 +1166,12 @@ export default class TextControl extends React.PureComponent<
             classNames: [
               {
                 key: 'inputControlClassName',
-                value: inputControlClassName,
                 weights: {
                   active: {
-                    pre: `${ns}TextControl.is-focused > .${inputControlClassName}, `
+                    pre: `${ns}TextControl.is-focused > .inputControlClassName-${id?.replace(
+                      'u:',
+                      ''
+                    )}, `
                   }
                 }
               }
@@ -1133,11 +1182,10 @@ export default class TextControl extends React.PureComponent<
         />
         <CustomStyle
           config={{
-            themeCss: this.formatInputThemeCss(),
+            themeCss: formatInputThemeCss(themeCss || css),
             classNames: [
               {
                 key: 'inputControlClassName',
-                value: inputControlClassName,
                 weights: {
                   default: {
                     inner: 'input'
@@ -1146,13 +1194,16 @@ export default class TextControl extends React.PureComponent<
                     inner: 'input'
                   },
                   active: {
-                    pre: `${ns}TextControl.is-focused > .${inputControlClassName}, `,
+                    pre: `${ns}TextControl.is-focused > .inputControlClassName-${id?.replace(
+                      'u:',
+                      ''
+                    )}, `,
                     inner: 'input'
                   }
                 }
               }
             ],
-            id: id + '-inner'
+            id: id && id + '-inner'
           }}
           env={env}
         />
@@ -1162,11 +1213,10 @@ export default class TextControl extends React.PureComponent<
             themeCss: themeCss || css,
             classNames: [
               {
-                key: 'addOnClassName',
-                value: addOnClassName
+                key: 'addOnClassName'
               }
             ],
-            id: id + '-addOn'
+            id: id && id + '-addOn'
           }}
           env={env}
         />

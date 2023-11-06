@@ -228,8 +228,14 @@ export interface ApiObject extends BaseApiObject {
     api: ApiObject,
     context: any
   ) => ApiObject | Promise<ApiObject>;
+  /**
+   * api 发送上下文，可以用来传递一些数据给 api 的 adaptor
+   * @readonly
+   */
+  context?: any;
   /** 是否过滤为空字符串的 query 参数 */
   filterEmptyQuery?: boolean;
+  downloadFileName?: string;
 }
 export type ApiString = string;
 export type Api = ApiString | ApiObject;
@@ -339,7 +345,8 @@ export interface ActionObject extends ButtonObject {
     | 'collapse'
     | 'step-submit'
     | 'selectAll'
-    | 'changeTabKey';
+    | 'changeTabKey'
+    | 'clearSearch';
   api?: BaseApiObject | string;
   asyncApi?: BaseApiObject | string;
   payload?: any;
@@ -660,6 +667,11 @@ export interface BaseSchemaWithoutType {
      */
     mock?: any;
   };
+
+  /**
+   * 可以组件级别用来关闭移动端样式
+   */
+  useMobileUI?: boolean;
 }
 
 export type OperatorType =
@@ -718,6 +730,7 @@ export interface ConditionRule {
   left?: ExpressionComplex;
   op?: OperatorType;
   right?: ExpressionComplex | Array<ExpressionComplex>;
+  if?: string;
 }
 
 export interface ConditionGroupValue {
@@ -725,6 +738,7 @@ export interface ConditionGroupValue {
   conjunction: 'and' | 'or';
   not?: boolean;
   children?: Array<ConditionRule | ConditionGroupValue>;
+  if?: string;
 }
 
 export interface ConditionValue extends ConditionGroupValue {}

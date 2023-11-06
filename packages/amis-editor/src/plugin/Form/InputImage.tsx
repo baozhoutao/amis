@@ -144,7 +144,11 @@ export class ImageControlPlugin extends BasePlugin {
               properties: {
                 item: {
                   type: 'object',
-                  title: '远程上传请求成功后返回的结果数据'
+                  title: '上传的文件'
+                },
+                result: {
+                  type: 'object',
+                  title: '远程上传请求成功后返回的响应数据'
                 }
               }
             }
@@ -459,7 +463,7 @@ export class ImageControlPlugin extends BasePlugin {
           [
             getSchemaTpl('style:formItem', {renderer: context.info.renderer}),
             {
-              title: '自定义样式',
+              title: '基本样式',
               body: [
                 {
                   type: 'select',
@@ -498,12 +502,12 @@ export class ImageControlPlugin extends BasePlugin {
                   type: 'icon-select',
                   returnSvg: true
                 },
-                getSchemaTpl('theme:size', {
-                  name: `${IconCssClassName}.font-size`,
+                getSchemaTpl('theme:select', {
+                  name: `${IconCssClassName}.iconSize`,
                   label: '图标大小',
                   editorThemePath: `${editorPath}.default.body.icon-size`
                 }),
-                getSchemaTpl('theme:size', {
+                getSchemaTpl('theme:select', {
                   name: `${IconCssClassName}.margin-bottom`,
                   label: '图标底边距',
                   editorThemePath: `${editorPath}.default.body.icon-margin`

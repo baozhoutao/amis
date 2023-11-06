@@ -1,7 +1,14 @@
 import React from 'react';
-import {autobind, createObject, Renderer, RendererProps} from 'amis-core';
+import {
+  autobind,
+  createObject,
+  Renderer,
+  RendererProps,
+  CustomStyle,
+  setThemeClassName
+} from 'amis-core';
 import {filter, asyncFilter} from 'amis-core';
-import cx from 'classnames';
+import isEmpty from 'lodash/isEmpty';
 import {anyChanged, getPropValue} from 'amis-core';
 import {escapeHtml} from 'amis-core';
 import {BaseSchema, SchemaTpl} from '../Schema';
@@ -187,16 +194,33 @@ export class Tpl extends React.Component<TplProps, TplState> {
       inline,
       classnames: cx,
       style,
+      maxLine,
       showNativeTitle,
       data,
-      env
+      id,
+      wrapperCustomStyle,
+      env,
+      themeCss
     } = this.props;
     const Component = wrapperComponent || (inline ? 'span' : 'div');
     const {content} = this.state;
 
+    // 显示行数处理
+    let styles: React.CSSProperties = {};
+    let cln = '';
+    if (maxLine > 0) {
+      cln = 'max-line';
+      styles.WebkitLineClamp = +maxLine;
+    }
+
     return (
       <Component
-        className={cx('TplField', className)}
+        className={cx(
+          'TplField',
+          className,
+          setThemeClassName('baseControlClassName', id, themeCss),
+          setThemeClassName('wrapperCustomStyle', id, wrapperCustomStyle)
+        )}
         style={buildStyle(style, data)}
         {...(showNativeTitle ? {title: this.getTitle(content)} : {})}
         onClick={this.handleClick}
@@ -204,8 +228,23 @@ export class Tpl extends React.Component<TplProps, TplState> {
         onMouseLeave={this.handleMouseLeave}
       >
         <span
+          className={cln ? cx(cln) : undefined}
+          style={!isEmpty(styles) ? styles : undefined}
           dangerouslySetInnerHTML={{__html: env.filterHtml(content)}}
         ></span>
+        <CustomStyle
+          config={{
+            wrapperCustomStyle,
+            id,
+            themeCss,
+            classNames: [
+              {
+                key: 'baseControlClassName'
+              }
+            ]
+          }}
+          env={env}
+        />
       </Component>
     );
   }

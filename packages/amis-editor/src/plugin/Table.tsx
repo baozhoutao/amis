@@ -6,7 +6,6 @@ import {
   RendererPluginEvent
 } from 'amis-editor-core';
 import {findTree, setVariable, someTree} from 'amis-core';
-
 import {registerEditorPlugin, repeatArray, diff} from 'amis-editor-core';
 import {
   BasePlugin,
@@ -19,6 +18,7 @@ import {
   InsertEventContext,
   ScaffoldForm
 } from 'amis-editor-core';
+import {DSBuilderManager} from '../builder/DSBuilderManager';
 import {defaultValue, getSchemaTpl, tipedLabel} from 'amis-editor-core';
 import {mockValue} from 'amis-editor-core';
 import {EditorNodeType} from 'amis-editor-core';
@@ -32,6 +32,9 @@ import {
   schemaToArray,
   resolveArrayDatasource
 } from '../util';
+import {reaction} from 'mobx';
+
+import type {EditorManager} from 'amis-editor-core';
 
 export class TablePlugin extends BasePlugin {
   static id = 'TablePlugin';
@@ -40,7 +43,7 @@ export class TablePlugin extends BasePlugin {
   $schema = '/schemas/TableSchema.json';
 
   // 组件名称
-  name = '表格';
+  name = '原子表格';
   tags = ['展示'];
   isBaseComponent = true;
   description =
@@ -432,7 +435,16 @@ export class TablePlugin extends BasePlugin {
       description: '开启表格拖拽排序功能'
     }
   ];
+
   panelJustify = true;
+
+  dsManager: DSBuilderManager;
+
+  constructor(manager: EditorManager) {
+    super(manager);
+    this.dsManager = new DSBuilderManager(manager);
+  }
+
   panelBodyCreator = (context: BaseEventContext) => {
     const isCRUDBody = context.schema.type === 'crud';
     const i18nEnabled = getI18nEnabled();
@@ -559,15 +571,14 @@ export class TablePlugin extends BasePlugin {
             body: [
               {
                 name: 'columnsTogglable',
-                label: '展示列显示开关',
+                label: tipedLabel(
+                  '列显示开关',
+                  '是否展示表格列的显隐控件，“自动”即列数量大于5时自动开启'
+                ),
                 type: 'button-group-select',
                 pipeIn: defaultValue('auto'),
                 size: 'sm',
                 labelAlign: 'left',
-                horizontal: {
-                  left: 5,
-                  right: 7
-                },
                 options: [
                   {
                     label: '自动',
@@ -583,8 +594,7 @@ export class TablePlugin extends BasePlugin {
                     label: '关闭',
                     value: false
                   }
-                ],
-                description: '自动即列数量大于5个时自动开启'
+                ]
               },
 
               getSchemaTpl('switch', {
@@ -887,6 +897,38 @@ export class TablePlugin extends BasePlugin {
     };
   }
 
+  async getAvailableContextFields(
+    scopeNode: EditorNodeType,
+    node: EditorNodeType,
+    region?: EditorNodeType
+  ) {
+    if (node?.info?.renderer?.name === 'table-cell') {
+      if (
+        scopeNode.parent?.type === 'service' &&
+        scopeNode.parent?.parent?.path?.endsWith('service')
+      ) {
+        return scopeNode.parent.parent.info.plugin.getAvailableContextFields?.(
+          scopeNode.parent.parent,
+          node,
+          region
+        );
+      }
+    }
+
+    const builder = this.dsManager.getBuilderBySchema(scopeNode.schema);
+
+    if (builder && scopeNode.schema.api) {
+      return builder.getAvailableContextFields(
+        {
+          schema: scopeNode.schema,
+          sourceKey: 'api',
+          feat: 'List'
+        },
+        node
+      );
+    }
+  }
+
   editHeaderDetail(id: string) {
     const manager = this.manager;
     const store = manager.store;
@@ -941,6 +983,26 @@ export class TablePlugin extends BasePlugin {
           manager.panelChangeValue(newValue, diff(value, newValue));
         }
       });
+  }
+
+  unWatchWidthChange: {[propName: string]: () => void} = {};
+  componentRef(node: EditorNodeType, ref: any) {
+    if (ref) {
+      const store = ref.props.store;
+      this.unWatchWidthChange[node.id] = reaction(
+        () =>
+          store.columns.map((column: any) => column.pristine.width).join(','),
+        () => {
+          ref.updateTableInfoLazy(() => {
+            this.manager.store.highlightNodes.forEach(node =>
+              node.calculateHighlightBox()
+            );
+          });
+        }
+      );
+    } else {
+      this.unWatchWidthChange[node.id]?.();
+    }
   }
 }
 

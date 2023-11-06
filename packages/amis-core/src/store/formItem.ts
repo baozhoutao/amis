@@ -22,16 +22,25 @@ import {
   findTree,
   findTreeIndex,
   spliceTree,
-  filterTree
+  filterTree,
+  eachTree,
+  mapTree,
+  setVariable,
+  cloneObject
 } from '../utils/helper';
 import {flattenTree} from '../utils/helper';
 import find from 'lodash/find';
+import isEqual from 'lodash/isEqual';
 import isPlainObject from 'lodash/isPlainObject';
 import {SimpleMap} from '../utils/SimpleMap';
 import {StoreNode} from './node';
 import {getStoreById} from './manager';
 import {normalizeOptions} from '../utils/normalizeOptions';
-import {optionValueCompare} from '../utils/optionValueCompare';
+import {
+  getOptionValue,
+  getOptionValueBindField,
+  optionValueCompare
+} from '../utils/optionValueCompare';
 import {dataMapping} from '../utils/dataMapping';
 
 interface IOption {
@@ -49,9 +58,19 @@ const ErrorDetail = types.model('ErrorDetail', {
   rule: ''
 });
 
+// 用于缓存 getSelectedOptions 的计算结果
+// onChange 时很容易连续重复触发 getSelectedOptions （约4次）
+// 在大数据量时，可有效提高效率
+const getSelectedOptionsCache: any = {
+  value: null,
+  nodeValueArray: null,
+  res: null
+};
+
 export const FormItemStore = StoreNode.named('FormItemStore')
   .props({
     isFocused: false,
+    isControlled: false, // 是否是受控表单项，通常是用在别的组件里面
     type: '',
     label: '',
     unique: false,
@@ -92,7 +111,9 @@ export const FormItemStore = StoreNode.named('FormItemStore')
     resetValue: types.optional(types.frozen(), ''),
     validateOnChange: false,
     /** 当前表单项所属的InputGroup父元素, 用于收集InputGroup的子元素 */
-    inputGroupControl: types.optional(types.frozen(), {})
+    inputGroupControl: types.optional(types.frozen(), {}),
+    colIndex: types.frozen(),
+    rowIndex: types.frozen()
   })
   .views(self => {
     function getForm(): any {
@@ -158,57 +179,83 @@ export const FormItemStore = StoreNode.named('FormItemStore')
         value: any = self.tmpValue,
         nodeValueArray?: any[] | undefined
       ) => {
+        // 查看是否命中缓存
+        if (
+          value != null &&
+          nodeValueArray != null &&
+          isEqual(value, getSelectedOptionsCache.value) &&
+          isEqual(nodeValueArray, getSelectedOptionsCache.nodeValueArray) &&
+          getSelectedOptionsCache.res
+        ) {
+          return getSelectedOptionsCache.res;
+        }
+
         if (typeof value === 'undefined') {
           return [];
         }
+
+        const filteredOptions = self.filteredOptions;
+        const {labelField, extractValue, multiple, delimiter} = self;
+        const valueField = self.valueField || 'value';
 
         const valueArray = nodeValueArray
           ? nodeValueArray
           : Array.isArray(value)
           ? value
           : // 单选时不应该分割
-          typeof value === 'string' && self.multiple
-          ? value.split(self.delimiter || ',')
+          typeof value === 'string' && multiple
+          ? // picker的value有可能value: "1, 2"，所以需要去掉一下空格
+            value.split(delimiter || ',').map((v: string) => v.trim())
           : [value];
+
         const selected = valueArray.map(item =>
-          item && item.hasOwnProperty(self.valueField || 'value')
-            ? item[self.valueField || 'value']
-            : item
+          item && item.hasOwnProperty(valueField) ? item[valueField] : item
         );
 
         const selectedOptions: Array<any> = [];
 
         selected.forEach((item, index) => {
           const matched = findTree(
-            self.filteredOptions,
-            optionValueCompare(item, self.valueField || 'value')
+            filteredOptions,
+            optionValueCompare(item, valueField),
+            {
+              resolve: getOptionValueBindField(valueField),
+              value: getOptionValue(item, valueField)
+            }
           );
 
           if (matched) {
             selectedOptions.push(matched);
-          } else {
-            let unMatched = (valueArray && valueArray[index]) || item;
-
-            if (
-              unMatched &&
-              (typeof unMatched === 'string' || typeof unMatched === 'number')
-            ) {
-              unMatched = {
-                [self.valueField || 'value']: item,
-                [self.labelField || 'label']: item,
-                __unmatched: true
-              };
-            } else if (unMatched && self.extractValue) {
-              unMatched = {
-                [self.valueField || 'value']: item,
-                [self.labelField || 'label']: 'UnKnown',
-                __unmatched: true
-              };
-            }
-
-            unMatched && selectedOptions.push(unMatched);
+            return;
           }
+
+          let unMatched = (valueArray && valueArray[index]) || item;
+
+          if (
+            unMatched &&
+            (typeof unMatched === 'string' || typeof unMatched === 'number')
+          ) {
+            unMatched = {
+              [valueField || 'value']: item,
+              [labelField || 'label']: item,
+              __unmatched: true
+            };
+          } else if (unMatched && extractValue) {
+            unMatched = {
+              [valueField || 'value']: item,
+              [labelField || 'label']: 'UnKnown',
+              __unmatched: true
+            };
+          }
+
+          unMatched && selectedOptions.push(unMatched);
         });
+
+        if (selectedOptions.length) {
+          getSelectedOptionsCache.value = value;
+          getSelectedOptionsCache.nodeValueArray = nodeValueArray;
+          getSelectedOptionsCache.res = selectedOptions;
+        }
 
         return selectedOptions;
       },
@@ -217,9 +264,17 @@ export const FormItemStore = StoreNode.named('FormItemStore')
         const values = Array.isArray(value)
           ? value
           : typeof value === 'string'
-          ? value.split(delimiter || ',')
+          ? value.split(delimiter || ',').map((v: string) => v.trim())
           : [];
         return values;
+      },
+
+      getMergedData(data: any) {
+        const result = cloneObject(data);
+        setVariable(result, self.name, self.tmpValue);
+        setVariable(result, '__value', self.tmpValue);
+        setVariable(result, '__name', self.name);
+        return result;
       }
     };
   })
@@ -317,27 +372,34 @@ export const FormItemStore = StoreNode.named('FormItemStore')
         inputGroupControl?.name != null &&
         (self.inputGroupControl = inputGroupControl);
 
-      rules = {
-        ...rules,
-        isRequired: self.required || rules?.isRequired
-      };
+      if (
+        typeof rules !== 'undefined' ||
+        typeof required !== 'undefined' ||
+        typeof minLength === 'number' ||
+        typeof maxLength === 'number'
+      ) {
+        rules = {
+          ...(rules ?? self.rules),
+          isRequired: self.required || rules?.isRequired
+        };
 
-      // todo 这个弄个配置由渲染器自己来决定
-      // 暂时先这样
-      if (~['input-text', 'textarea'].indexOf(self.type)) {
-        if (typeof minLength === 'number') {
-          rules.minLength = minLength;
+        // todo 这个弄个配置由渲染器自己来决定
+        // 暂时先这样
+        if (~['input-text', 'textarea'].indexOf(self.type)) {
+          if (typeof minLength === 'number') {
+            (rules as any).minLength = minLength;
+          }
+
+          if (typeof maxLength === 'number') {
+            (rules as any).maxLength = maxLength;
+          }
         }
 
-        if (typeof maxLength === 'number') {
-          rules.maxLength = maxLength;
+        if (isObjectShallowModified(rules, self.rules)) {
+          self.rules = rules;
+          clearError('builtin');
+          self.validated = false;
         }
-      }
-
-      if (isObjectShallowModified(rules, self.rules)) {
-        self.rules = rules;
-        clearError('builtin');
-        self.validated = false;
       }
     }
 
@@ -513,7 +575,7 @@ export const FormItemStore = StoreNode.named('FormItemStore')
         self.selectFirst &&
         self.filteredOptions.length &&
         (selectedOptions = self.getSelectedOptions(self.value)) &&
-        !selectedOptions.filter(item => !item.__unmatched).length
+        !selectedOptions.filter((item: any) => !item.__unmatched).length
       ) {
         const fistOption = getFirstAvaibleOption(self.filteredOptions);
         if (!fistOption) {
@@ -586,17 +648,18 @@ export const FormItemStore = StoreNode.named('FormItemStore')
           if (!msg) {
             msg = `status: ${json.status}`;
           }
-          getEnv(self).notify(
-            'error',
-            apiObject.messages?.failed ??
-              (self.errors.join('') || `${apiObject.url}: ${msg}`),
-            json.msgTimeout !== undefined
-              ? {
-                  closeButton: true,
-                  timeout: json.msgTimeout
-                }
-              : undefined
-          );
+          !(api as any)?.silent &&
+            getEnv(self).notify(
+              'error',
+              apiObject.messages?.failed ??
+                (self.errors.join('') || `${apiObject.url}: ${msg}`),
+              json.msgTimeout !== undefined
+                ? {
+                    closeButton: true,
+                    timeout: json.msgTimeout
+                  }
+                : undefined
+            );
         } else {
           result = json;
         }
@@ -616,7 +679,7 @@ export const FormItemStore = StoreNode.named('FormItemStore')
         }
 
         console.error(e);
-        env.notify('error', e.message);
+        !(api as any)?.silent && env.notify('error', e.message);
         return;
       }
     } as any);
@@ -663,7 +726,11 @@ export const FormItemStore = StoreNode.named('FormItemStore')
         self.selectedOptions.forEach((item: any) => {
           const exited = findTree(
             options as any,
-            optionValueCompare(item, self.valueField || 'value')
+            optionValueCompare(item, self.valueField || 'value'),
+            {
+              resolve: getOptionValueBindField(self.valueField),
+              value: getOptionValue(item, self.valueField)
+            }
           );
 
           if (!exited) {
@@ -718,6 +785,7 @@ export const FormItemStore = StoreNode.named('FormItemStore')
       }
 
       !silent &&
+        !(api as any)?.silent &&
         getEnv(self).notify('info', self.__('FormItem.autoFillLoadFailed'));
 
       return;
@@ -824,7 +892,12 @@ export const FormItemStore = StoreNode.named('FormItemStore')
       if (Array.isArray(topOption.children)) {
         const children = topOption.children.concat();
         flattenTree(newLeftOptions).forEach(item => {
-          if (!findTree(topOption.children, node => node.ref === item.value)) {
+          if (
+            !findTree(topOption.children, node => node.ref === item.value, {
+              resolve: node => node.ref,
+              value: item.value
+            })
+          ) {
             children.push({ref: item.value, defer: true});
           }
         });
@@ -1058,37 +1131,40 @@ export const FormItemStore = StoreNode.named('FormItemStore')
     // @issue 强依赖form，需要改造暂且放过。
     function syncOptions(originOptions?: Array<any>, data?: Object) {
       if (!self.options.length && typeof self.value === 'undefined') {
-        self.selectedOptions = [];
-        self.filteredOptions = [];
+        isArrayChildrenModified(self.filteredOptions, []) &&
+          (self.filteredOptions = []);
+        isArrayChildrenModified(self.selectedOptions, []) &&
+          (self.selectedOptions = []);
         return;
       }
 
       const value = self.tmpValue;
+      const valueField = self.valueField || 'value';
+      const labelField = self.labelField || 'label';
 
       const selected = Array.isArray(value)
         ? value.map(item =>
-            item && item.hasOwnProperty(self.valueField || 'value')
-              ? item[self.valueField || 'value']
-              : item
+            item && item.hasOwnProperty(valueField) ? item[valueField] : item
           )
         : typeof value === 'string'
-        ? value.split(self.delimiter || ',')
+        ? value.split(self.delimiter || ',').map((v: string) => v.trim())
         : value === void 0
         ? []
         : [
-            value && value.hasOwnProperty(self.valueField || 'value')
-              ? value[self.valueField || 'value']
+            value && value.hasOwnProperty(valueField)
+              ? value[valueField]
               : value
           ];
 
-      if (value && value.hasOwnProperty(self.labelField || 'label')) {
+      if (value && value.hasOwnProperty(labelField)) {
         selected[0] = {
-          [self.labelField || 'label']: value[self.labelField || 'label'],
-          [self.valueField || 'value']: value[self.valueField || 'value']
+          [labelField]: value[labelField],
+          [valueField]: value[valueField]
         };
       }
 
       let expressionsInOptions = false;
+      const oldFilteredOptions = self.filteredOptions;
       let filteredOptions = self.options
         .filter((item: any) => {
           if (
@@ -1107,9 +1183,9 @@ export const FormItemStore = StoreNode.named('FormItemStore')
         .map((item: any, index) => {
           const disabled = evalExpression(item.disabledOn, data);
           const newItem = item.disabledOn
-            ? self.filteredOptions.length > index &&
-              self.filteredOptions[index].disabled === disabled
-              ? self.filteredOptions[index]
+            ? oldFilteredOptions.length > index &&
+              oldFilteredOptions[index].disabled === disabled
+              ? oldFilteredOptions[index]
               : {
                   ...item,
                   disabled: disabled
@@ -1120,14 +1196,22 @@ export const FormItemStore = StoreNode.named('FormItemStore')
         });
 
       self.expressionsInOptions = expressionsInOptions;
-      const flattened: Array<any> = flattenTree(filteredOptions);
+      const flattenedMap: Map<any, any> = new Map();
+      const flattened: Array<any> = [];
+      eachTree(filteredOptions, item => {
+        const value = getOptionValue(item, valueField);
+        value != null && flattenedMap.set(value, item);
+        value != null && flattened.push(item);
+      });
       const selectedOptions: Array<any> = [];
-
       selected.forEach((item, index) => {
-        let idx = findIndex(
-          flattened,
-          optionValueCompare(item, self.valueField || 'value')
-        );
+        const value = getOptionValue(item, valueField);
+        if (flattenedMap.get(value)) {
+          selectedOptions.push(flattenedMap.get(value));
+          return;
+        }
+
+        let idx = findIndex(flattened, optionValueCompare(item, valueField));
 
         if (~idx) {
           selectedOptions.push(flattened[idx]);
@@ -1139,26 +1223,22 @@ export const FormItemStore = StoreNode.named('FormItemStore')
             (typeof unMatched === 'string' || typeof unMatched === 'number')
           ) {
             unMatched = {
-              [self.valueField || 'value']: item,
-              [self.labelField || 'label']: item,
+              [valueField]: item,
+              [labelField]: item,
               __unmatched: true
             };
 
             const orgin: any =
               originOptions &&
-              find(
-                originOptions,
-                optionValueCompare(item, self.valueField || 'value')
-              );
+              find(originOptions, optionValueCompare(item, valueField));
 
             if (orgin) {
-              unMatched[self.labelField || 'label'] =
-                orgin[self.labelField || 'label'];
+              unMatched[labelField] = orgin[labelField];
             }
           } else if (unMatched && self.extractValue) {
             unMatched = {
-              [self.valueField || 'value']: item,
-              [self.labelField || 'label']: 'UnKnown',
+              [valueField]: item,
+              [labelField]: 'UnKnown',
               __unmatched: true
             };
           }
@@ -1183,12 +1263,19 @@ export const FormItemStore = StoreNode.named('FormItemStore')
             }
           });
 
-        if (filteredOptions.length) {
-          filteredOptions = filteredOptions.filter(
-            option => !~options.indexOf(option.value)
-          );
+        if (filteredOptions.length && options.length) {
+          filteredOptions = mapTree(filteredOptions, item => {
+            if (~options.indexOf(item.value)) {
+              return {
+                ...item,
+                disabled: true
+              };
+            }
+            return item;
+          });
         }
       }
+
       isArrayChildrenModified(self.selectedOptions, selectedOptions) &&
         (self.selectedOptions = selectedOptions);
       isArrayChildrenModified(self.filteredOptions, filteredOptions) &&
@@ -1213,7 +1300,7 @@ export const FormItemStore = StoreNode.named('FormItemStore')
 
       if (subStore && subStore.storeType === 'ComboStore') {
         const combo = subStore as IComboStore;
-        combo.forms.forEach(form => form.reset());
+        combo.forms.forEach(form => form.reset(undefined, false)); // 仅重置校验状态，不要重置数据
       }
 
       !keepErrors && clearError();
@@ -1278,6 +1365,10 @@ export const FormItemStore = StoreNode.named('FormItemStore')
       }
     }
 
+    function setIsControlled(value: any) {
+      self.isControlled = !!value;
+    }
+
     return {
       focus,
       blur,
@@ -1303,7 +1394,8 @@ export const FormItemStore = StoreNode.named('FormItemStore')
       changeEmitedValue,
       addSubFormItem,
       removeSubFormItem,
-      loadAutoUpdateData
+      loadAutoUpdateData,
+      setIsControlled
     };
   });
 

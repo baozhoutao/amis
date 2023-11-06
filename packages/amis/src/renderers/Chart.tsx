@@ -6,7 +6,9 @@ import {
   Renderer,
   RendererProps,
   loadScript,
-  buildStyle
+  buildStyle,
+  CustomStyle,
+  setThemeClassName
 } from 'amis-core';
 import {ServiceStore, IServiceStore} from 'amis-core';
 
@@ -94,12 +96,12 @@ export interface ChartSchema extends BaseSchema {
   /**
    * 宽度设置
    */
-  width?: number;
+  width?: number | string;
 
   /**
    * 高度设置
    */
-  height?: number;
+  height?: number | string;
 
   /**
    * 刷新时间
@@ -474,17 +476,19 @@ export class Chart extends React.Component<ChartProps> {
         isAlive(store) && store.markFetching(false);
 
         if (!result.ok) {
-          return env.notify(
-            'error',
-            (api as ApiObject)?.messages?.failed ??
-              (result.msg || __('fetchFailed')),
-            result.msgTimeout !== undefined
-              ? {
-                  closeButton: true,
-                  timeout: result.msgTimeout
-                }
-              : undefined
-          );
+          !(api as ApiObject)?.silent &&
+            env.notify(
+              'error',
+              (api as ApiObject)?.messages?.failed ??
+                (result.msg || __('fetchFailed')),
+              result.msgTimeout !== undefined
+                ? {
+                    closeButton: true,
+                    timeout: result.msgTimeout
+                  }
+                : undefined
+            );
+          return;
         }
         delete this.reloadCancel;
 
@@ -509,7 +513,7 @@ export class Chart extends React.Component<ChartProps> {
         }
 
         isAlive(store) && store.markFetching(false);
-        env.notify('error', reason);
+        !(api as ApiObject)?.silent && env.notify('error', reason);
         this.echarts?.hideLoading();
       });
   }
@@ -593,22 +597,47 @@ export class Chart extends React.Component<ChartProps> {
       height,
       classPrefix: ns,
       unMountOnHidden,
-      data
+      data,
+      id,
+      wrapperCustomStyle,
+      env,
+      themeCss,
+      baseControlClassName
     } = this.props;
     let style = this.props.style || {};
-
-    width && (style.width = width);
-    height && (style.height = height);
+    style.width = style.width || width || '100%';
+    style.height = style.height || height || '300px';
     const styleVar = buildStyle(style, data);
 
     return (
-      <div className={cx(`${ns}Chart`, className)} style={styleVar}>
+      <div
+        className={cx(
+          `${ns}Chart`,
+          className,
+          setThemeClassName('baseControlClassName', id, themeCss),
+          setThemeClassName('wrapperCustomStyle', id, wrapperCustomStyle)
+        )}
+        style={styleVar}
+      >
         <LazyComponent
           unMountOnHidden={unMountOnHidden}
           placeholder="..." // 之前那个 spinner 会导致 sensor 失效
           component={() => (
             <div className={`${ns}Chart-content`} ref={this.refFn}></div>
           )}
+        />
+        <CustomStyle
+          config={{
+            wrapperCustomStyle,
+            id,
+            themeCss,
+            classNames: [
+              {
+                key: 'baseControlClassName'
+              }
+            ]
+          }}
+          env={env}
         />
       </div>
     );

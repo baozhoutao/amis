@@ -1,5 +1,10 @@
 import React from 'react';
-import {Renderer, RendererProps} from 'amis-core';
+import {
+  Renderer,
+  RendererProps,
+  CustomStyle,
+  setThemeClassName
+} from 'amis-core';
 import {filter} from 'amis-core';
 import {
   resolveVariable,
@@ -191,7 +196,13 @@ export class ImagesField extends React.Component<ImagesProps> {
       options,
       showToolbar,
       toolbarActions,
-      imageGallaryClassName
+      imageGallaryClassName,
+      galleryControlClassName,
+      id,
+      wrapperCustomStyle,
+      env,
+      themeCss,
+      imagesControlClassName
     } = this.props;
 
     let value: any;
@@ -217,7 +228,15 @@ export class ImagesField extends React.Component<ImagesProps> {
     this.list = list;
 
     return (
-      <div className={cx('ImagesField', className)} style={style}>
+      <div
+        className={cx(
+          'ImagesField',
+          className,
+          setThemeClassName('imagesControlClassName', id, themeCss),
+          setThemeClassName('wrapperCustomStyle', id, wrapperCustomStyle)
+        )}
+        style={style}
+      >
         {Array.isArray(list) ? (
           <div className={cx('Images', listClassName)}>
             {list.map((item: any, index: number) => (
@@ -242,7 +261,15 @@ export class ImagesField extends React.Component<ImagesProps> {
                 enlargeWithGallary={enlargeWithGallary}
                 onEnlarge={this.handleEnlarge}
                 showToolbar={showToolbar}
-                imageGallaryClassName={imageGallaryClassName}
+                imageGallaryClassName={`${imageGallaryClassName} ${setThemeClassName(
+                  'imageGallaryClassName',
+                  id,
+                  themeCss
+                )} ${setThemeClassName(
+                  'galleryControlClassName',
+                  id,
+                  themeCss
+                )}`}
                 toolbarActions={toolbarActions}
               />
             ))}
@@ -259,6 +286,22 @@ export class ImagesField extends React.Component<ImagesProps> {
         ) : (
           placeholder
         )}
+        <CustomStyle
+          config={{
+            wrapperCustomStyle,
+            id,
+            themeCss,
+            classNames: [
+              {
+                key: 'imagesControlClassName'
+              },
+              {
+                key: 'galleryControlClassName'
+              }
+            ]
+          }}
+          env={env}
+        />
       </div>
     );
   }

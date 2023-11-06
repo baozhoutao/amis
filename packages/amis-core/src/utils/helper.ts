@@ -1,21 +1,29 @@
-import isPlainObject from 'lodash/isPlainObject';
-import isEqual from 'lodash/isEqual';
-import isNaN from 'lodash/isNaN';
+import React from 'react';
+import moment from 'moment';
+import {isObservable, isObservableArray} from 'mobx';
 import uniq from 'lodash/uniq';
 import last from 'lodash/last';
 import merge from 'lodash/merge';
-import {Schema, PlainObject, FunctionPropertyNames} from '../types';
-import {evalExpression} from './tpl';
+import isPlainObject from 'lodash/isPlainObject';
+import isEqual from 'lodash/isEqual';
+import isNaN from 'lodash/isNaN';
+import isNumber from 'lodash/isNumber';
+import isString from 'lodash/isString';
 import qs from 'qs';
+import {compile} from 'path-to-regexp';
+
+import type {Schema, PlainObject, FunctionPropertyNames} from '../types';
+
+import {evalExpression} from './tpl';
 import {IIRendererStore} from '../store';
 import {IFormStore} from '../store/form';
 import {autobindMethod} from './autobind';
 import {
   isPureVariable,
   resolveVariable,
-  resolveVariableAndFilter
+  resolveVariableAndFilter,
+  tokenize
 } from './tpl-builtin';
-import {isObservable, isObservableArray} from 'mobx';
 import {
   cloneObject,
   createObject,
@@ -27,6 +35,7 @@ import {
 import {string2regExp} from './string2regExp';
 import {getVariable} from './getVariable';
 import {keyToPath} from './keyToPath';
+import {isExpression, replaceExpression} from './formula';
 
 export {
   createObject,
@@ -72,7 +81,7 @@ export function isSuperDataModified(
   prevData: any,
   store: IIRendererStore
 ) {
-  let keys: Array<string> = [];
+  let keys: Array<string>;
 
   if (store && store.storeType === 'FormStore') {
     keys = uniq(
@@ -189,9 +198,37 @@ export function anyChanged(
   to: {[propName: string]: any},
   strictMode: boolean = true
 ): boolean {
-  return (typeof attrs === 'string' ? attrs.split(/\s*,\s*/) : attrs).some(
-    key => (strictMode ? from[key] !== to[key] : from[key] != to[key])
-  );
+  return (
+    typeof attrs === 'string'
+      ? attrs.split(',').map(item => item.trim())
+      : attrs
+  ).some(key => (strictMode ? from[key] !== to[key] : from[key] != to[key]));
+}
+
+type Mutable<T> = {
+  -readonly [k in keyof T]: T[k];
+};
+
+export function changedEffect<T extends Record<string, any>>(
+  attrs: string | Array<string>,
+  origin: T,
+  data: T,
+  effect: (changes: Partial<Mutable<T>>) => void,
+  strictMode: boolean = true
+) {
+  const changes: Partial<T> = {};
+  const keys =
+    typeof attrs === 'string'
+      ? attrs.split(',').map(item => item.trim())
+      : attrs;
+
+  keys.forEach(key => {
+    if (strictMode ? origin[key] !== data[key] : origin[key] != data[key]) {
+      (changes as any)[key] = data[key];
+    }
+  });
+
+  Object.keys(changes).length && effect(changes);
 }
 
 export function rmUndefined(obj: PlainObject) {
@@ -230,9 +267,13 @@ export function isObjectShallowModified(
             statck
           )
         );
-  } else if (isNaN(prev) && isNaN(next)) {
+  }
+
+  if (isNaN(prev) && isNaN(next)) {
     return false;
-  } else if (
+  }
+
+  if (
     null == prev ||
     null == next ||
     !isObject(prev) ||
@@ -261,10 +302,11 @@ export function isObjectShallowModified(
   if (~statck.indexOf(prev)) {
     return false;
   }
+
   statck.push(prev);
 
   for (let i: number = keys.length - 1; i >= 0; i--) {
-    let key = keys[i];
+    const key = keys[i];
     if (
       isObjectShallowModified(
         prev[key],
@@ -342,7 +384,7 @@ export function makeColumnClassBuild(
   let count = 12;
   let step = Math.floor(count / steps);
 
-  return function (schema: Schema) {
+  return (schema: Schema) => {
     if (
       schema.columnClassName &&
       /\bcol-(?:xs|sm|md|lg)-(\d+)\b/.test(schema.columnClassName)
@@ -352,7 +394,9 @@ export function makeColumnClassBuild(
       steps--;
       step = Math.floor(count / steps);
       return schema.columnClassName;
-    } else if (schema.columnClassName) {
+    }
+
+    if (schema.columnClassName) {
       count -= step;
       steps--;
       return schema.columnClassName;
@@ -370,7 +414,7 @@ export function hasVisibleExpression(schema: {
   visible?: boolean;
   hidden?: boolean;
 }) {
-  return schema?.visibleOn || schema?.hiddenOn;
+  return !!(schema.visibleOn || schema.hiddenOn);
 }
 
 export function isVisible(
@@ -385,8 +429,8 @@ export function isVisible(
   return !(
     schema.hidden ||
     schema.visible === false ||
-    (schema.hiddenOn && evalExpression(schema.hiddenOn, data) === true) ||
-    (schema.visibleOn && evalExpression(schema.visibleOn, data) === false)
+    (schema.hiddenOn && evalExpression(schema.hiddenOn, data)) ||
+    (schema.visibleOn && !evalExpression(schema.visibleOn, data))
   );
 }
 
@@ -399,17 +443,18 @@ export function isUnfolded(
 ): boolean {
   let {foldedField, unfoldedField} = config;
 
-  unfoldedField = unfoldedField || 'unfolded';
-  foldedField = foldedField || 'folded';
+  unfoldedField ||= 'unfolded';
+  foldedField ||= 'folded';
 
-  let ret: boolean = false;
   if (unfoldedField && typeof node[unfoldedField] !== 'undefined') {
-    ret = !!node[unfoldedField];
-  } else if (foldedField && typeof node[foldedField] !== 'undefined') {
-    ret = !node[foldedField];
+    return !!node[unfoldedField];
   }
 
-  return ret;
+  if (foldedField && typeof node[foldedField] !== 'undefined') {
+    return !node[foldedField];
+  }
+
+  return false;
 }
 
 /**
@@ -492,12 +537,14 @@ export function promisify<T extends Function>(
   if ((fn as any)._promisified) {
     return fn as any;
   }
-  let promisified = function () {
+  const promisified = function () {
     try {
       const ret = fn.apply(null, arguments);
       if (ret && ret.then) {
         return ret;
-      } else if (typeof ret === 'function') {
+      }
+
+      if (typeof ret === 'function') {
         // thunk support
         return new Promise((resolve, reject) =>
           ret((error: boolean, value: any) =>
@@ -505,6 +552,7 @@ export function promisify<T extends Function>(
           )
         );
       }
+
       return Promise.resolve(ret);
     } catch (e) {
       return Promise.reject(e);
@@ -512,6 +560,7 @@ export function promisify<T extends Function>(
   };
   (promisified as any).raw = fn;
   (promisified as any)._promisified = true;
+
   return promisified;
 }
 
@@ -562,7 +611,7 @@ export function difference<
       const keys: Array<keyof T & keyof U> = uniq(
         Object.keys(object).concat(Object.keys(base))
       );
-      let result: any = {};
+      const result: any = {};
 
       keys.forEach(key => {
         const a: any = object[key as keyof T];
@@ -586,9 +635,9 @@ export function difference<
       });
 
       return result;
-    } else {
-      return object;
     }
+
+    return object;
   }
   return changes(object, base);
 }
@@ -705,11 +754,7 @@ export function omitControls(
 }
 
 export function isEmpty(thing: any) {
-  if (isObject(thing) && Object.keys(thing).length) {
-    return false;
-  }
-
-  return true;
+  return !(isObject(thing) && Object.keys(thing).length);
 }
 
 /**
@@ -722,14 +767,14 @@ export const uuid = () => {
 };
 
 // 参考 https://github.com/streamich/v4-uuid
-const str = () =>
+const createStr = () =>
   (
     '00000000000000000' + (Math.random() * 0xffffffffffffffff).toString(16)
   ).slice(-16);
 
 export const uuidv4 = () => {
-  const a = str();
-  const b = str();
+  const a = createStr();
+  const b = createStr();
   return (
     a.slice(0, 8) +
     '-' +
@@ -747,6 +792,7 @@ export interface TreeItem {
   children?: TreeArray;
   [propName: string]: any;
 }
+
 export interface TreeArray extends Array<TreeItem> {}
 
 /**
@@ -825,26 +871,80 @@ export function eachTree<T extends TreeItem>(
   level: number = 1,
   paths: Array<T> = []
 ) {
-  tree.map((item, index) => {
-    iterator(item, index, level, paths);
+  const length = tree.length;
+  for (let i = 0; i < length; i++) {
+    const item = tree[i];
+    const res = iterator(item, i, level, paths);
+    if (res === 'break') {
+      break;
+    }
+    if (res === 'continue') {
+      continue;
+    }
 
     if (item.children?.splice) {
       eachTree(item.children, iterator, level + 1, paths.concat(item));
     }
-  });
+  }
 }
 
 /**
  * 在树中查找节点。
  * @param tree
  * @param iterator
+ * @param withCache {Object} 启用缓存（new Map()），多次重复从一颗树中查找时可大幅度提升性能
+ * @param withCache.value {string} 必须，需要从缓存Map中匹配的值，使用Map.get(value) 匹配
+ * @param withCache.resolve {function} 构建Map 时，存入key 的处理函数
+ * @param withCache.foundEffect 匹配到时，额外做的一些副作用
  */
+const findTreeCache: {
+  tree: any | null;
+  map: Map<any, any> | null;
+} = {
+  tree: null,
+  map: null
+};
 export function findTree<T extends TreeItem>(
   tree: Array<T>,
-  iterator: (item: T, key: number, level: number, paths: Array<T>) => any
+  iterator: (item: T, key: number, level: number, paths: Array<T>) => any,
+  withCache?: {
+    value: string | number;
+    resolve?: (treeItem: T) => any;
+    foundEffect?: (
+      item: T,
+      key: number,
+      level: number,
+      paths?: Array<T>
+    ) => any;
+  }
 ): T | null {
-  let result: T | null = null;
+  const isValidateKey = (value: any) =>
+    value !== '' && (isString(value) || isNumber(value));
+  // 缓存优化
+  if (withCache && isValidateKey(withCache.value)) {
+    const {resolve, value, foundEffect} = withCache;
+    // 构建缓存
+    if (tree !== findTreeCache.tree || !findTreeCache.map) {
+      const map = new Map();
+      eachTree(tree, (item, key, level, paths) => {
+        const mapKey = resolve ? resolve(item) : item;
+        isValidateKey(mapKey) &&
+          map.set(String(mapKey), [item, key, level, paths]);
+      });
+      findTreeCache.map = map;
+      findTreeCache.tree = tree;
+    }
 
+    // 从缓存查找结果
+    const res = findTreeCache.map.get(String(value));
+    if (res != null) {
+      // 副作用
+      foundEffect && foundEffect.apply(null, res.slice());
+      return res[0];
+    }
+  }
+
+  let result: T | null = null;
   everyTree(tree, (item, key, level, paths) => {
     if (iterator(item, key, level, paths)) {
       result = item;
@@ -881,32 +981,56 @@ export function findTreeAll<T extends TreeItem>(
  * 在树中查找节点, 返回下标数组。
  * @param tree
  * @param iterator
+ * @param withCache {Object} 启用缓存（new Map()），多次重复从一颗树中查找时可大幅度提升性能
+ * @param withCache.value {any} 必须，需要从缓存Map中匹配的值，使用Map.get(value) 匹配
+ * @param withCache.resolve {function} 构建Map 时，存入key 的处理函数
  */
 export function findTreeIndex<T extends TreeItem>(
   tree: Array<T>,
-  iterator: (item: T, key: number, level: number, paths: Array<T>) => any
+  iterator: (item: T, key: number, level: number, paths: Array<T>) => any,
+  withCache?: {
+    resolve?: (treeItem: T) => any;
+    value: any;
+  }
 ): Array<number> | undefined {
   let idx: Array<number> = [];
 
-  findTree(tree, (item, index, level, paths) => {
-    if (iterator(item, index, level, paths)) {
-      idx = [index];
+  const foundEffect = (
+    item: T,
+    index: number,
+    level: number,
+    paths: Array<T>
+  ) => {
+    idx = [index];
 
-      paths = paths.concat();
-      paths.unshift({
-        children: tree
-      } as any);
+    paths = paths.concat();
+    paths.unshift({
+      children: tree
+    } as any);
 
-      for (let i = paths.length - 1; i > 0; i--) {
-        const prev = paths[i - 1];
-        const current = paths[i];
-        idx.unshift(prev.children!.indexOf(current));
-      }
-
-      return true;
+    for (let i = paths.length - 1; i > 0; i--) {
+      const prev = paths[i - 1];
+      const current = paths[i];
+      idx.unshift(prev.children!.indexOf(current));
     }
-    return false;
-  });
+  };
+
+  findTree(
+    tree,
+    (item, index, level, paths) => {
+      if (iterator(item, index, level, paths)) {
+        foundEffect(item, index, level, paths);
+        return true;
+      }
+      return false;
+    },
+    !withCache
+      ? undefined
+      : {
+          ...withCache,
+          foundEffect
+        }
+  );
 
   return idx.length ? idx : undefined;
 }
@@ -959,7 +1083,7 @@ export function filterTree<T extends TreeItem>(
           item = {...item, children: children};
         }
 
-        return item;
+        return item as T;
       })
       .filter((item, index) => iterator(item, index, level, paths));
   }
@@ -980,7 +1104,7 @@ export function filterTree<T extends TreeItem>(
           item = {...item, children: children};
         }
       }
-      return item;
+      return item as T;
     });
 }
 
@@ -1002,24 +1126,50 @@ export function everyTree<T extends TreeItem>(
   paths: Array<T> = [],
   indexes: Array<number> = []
 ): boolean {
-  if (!Array.isArray(tree) && !isObservableArray(tree)) {
-    return false;
-  }
-  return tree.every((item, index) => {
-    const value: any = iterator(item, index, level, paths, indexes);
+  const stack: {
+    item: T;
+    index: number;
+    level: number;
+    paths: Array<T>;
+    indexes: Array<number>;
+  }[] = [];
+  stack.push({item: null as any, index: -1, level: 1, paths: [], indexes: []});
+  while (stack.length > 0) {
+    const {item, index, level, paths, indexes} = stack.pop()!;
 
-    if (value && item.children?.splice) {
-      return everyTree(
-        item.children,
-        iterator,
-        level + 1,
-        paths.concat(item),
-        indexes.concat(index)
-      );
+    if (index >= 0) {
+      const value: any = iterator(item, index, level, paths, indexes);
+
+      if (value && item.children?.splice) {
+        const children = item.children;
+        for (let i = children.length - 1; i >= 0; i--) {
+          stack.push({
+            item: children[i] as T,
+            index: i,
+            level: level + 1,
+            paths: paths.concat(item),
+            indexes: indexes.concat(index)
+          });
+        }
+      } else if (!value) {
+        return false;
+      }
+    } else {
+      if (!Array.isArray(tree) && !isObservableArray(tree)) {
+        return false;
+      }
+      for (let i = tree.length - 1; i >= 0; i--) {
+        stack.push({
+          item: tree[i],
+          index: i,
+          level: 1,
+          paths: [],
+          indexes: []
+        });
+      }
     }
-
-    return value;
-  });
+  }
+  return true;
 }
 
 /**
@@ -1207,6 +1357,19 @@ export function getTreeAncestors<T extends TreeItem>(
 export function getTreeParent<T extends TreeItem>(tree: Array<T>, value: T) {
   const ancestors = getTreeAncestors(tree, value);
   return ancestors?.length ? ancestors[ancestors.length - 1] : null;
+}
+
+export function countTree<T extends TreeItem>(
+  tree: Array<T>,
+  iterator?: (item: T, key: number, level: number, paths?: Array<T>) => any
+): number {
+  let count = 0;
+  eachTree(tree, (item, key, level, paths) => {
+    if (!iterator || iterator(item, key, level, paths)) {
+      count++;
+    }
+  });
+  return count;
 }
 
 export function ucFirst(str?: string) {
@@ -1417,8 +1580,9 @@ export function chainEvents(props: any, schema: any) {
 
 export function mapObject(
   value: any,
-  fn: Function,
-  skipFn?: (value: any) => boolean
+  valueMapper: (value: any) => any,
+  skipFn?: (value: any) => boolean,
+  keyMapper?: (key: string) => string
 ): any {
   // 如果value值满足skipFn条件则不做map操作
   skipFn =
@@ -1433,25 +1597,29 @@ export function mapObject(
           return false;
         };
 
-  if (!!skipFn(value)) {
+  if (skipFn(value)) {
     return value;
   }
 
   if (Array.isArray(value)) {
-    return value.map(item => mapObject(item, fn));
+    return value.map(item => mapObject(item, valueMapper, skipFn, keyMapper));
   }
 
   if (isObject(value)) {
-    let tmpValue = {...value};
-    Object.keys(tmpValue).forEach(key => {
-      (tmpValue as PlainObject)[key] = mapObject(
-        (tmpValue as PlainObject)[key],
-        fn
+    let tmpValue = {};
+    Object.keys(value).forEach(key => {
+      const newKey = keyMapper ? keyMapper(key) : key;
+
+      (tmpValue as PlainObject)[newKey] = mapObject(
+        (value as PlainObject)[key],
+        valueMapper,
+        skipFn,
+        keyMapper
       );
     });
     return tmpValue;
   }
-  return fn(value);
+  return valueMapper(value);
 }
 
 export function loadScript(src: string) {
@@ -1592,7 +1760,7 @@ function resolveValueByName(
   canAccessSuper?: boolean
 ) {
   return isPureVariable(name)
-    ? resolveVariableAndFilter(name, data)
+    ? resolveVariableAndFilter(name, data, '|raw')
     : resolveVariable(name, data, canAccessSuper);
 }
 
@@ -1615,7 +1783,9 @@ export function getPropValue<
     value ??
     getter?.(props) ??
     resolveValueByName(data, name, canAccessSuper) ??
-    defaultValue
+    (isExpression(defaultValue)
+      ? resolveVariableAndFilter(defaultValue, data)
+      : replaceExpression(defaultValue))
   );
 }
 
@@ -1721,17 +1891,14 @@ export function normalizeNodePath(
 export function isClickOnInput(e: React.MouseEvent<HTMLElement>) {
   const target: HTMLElement = e.target as HTMLElement;
   let formItem;
-  if (
+  return !!(
     !e.currentTarget.contains(target) ||
     ~['INPUT', 'TEXTAREA'].indexOf(target.tagName) ||
     ((formItem = target.closest(
       `button, a, [data-role="form-item"], label[data-role="checkbox"]`
     )) &&
       e.currentTarget.contains(formItem))
-  ) {
-    return true;
-  }
-  return false;
+  );
 }
 
 // 计算字符串 hash
@@ -1749,13 +1916,17 @@ export function hashCode(s: string): number {
  */
 export function JSONTraverse(
   json: any,
-  mapper: (value: any, key: string | number, host: Object) => any
+  mapper: (value: any, key: string | number, host: Object) => any,
+  maxDeep: number = Number.MAX_VALUE
 ) {
+  if (maxDeep <= 0) {
+    return;
+  }
   Object.keys(json).forEach(key => {
     const value: any = json[key];
     if (!isObservable(value)) {
       if (isPlainObject(value) || Array.isArray(value)) {
-        JSONTraverse(value, mapper);
+        JSONTraverse(value, mapper, maxDeep - 1);
       } else {
         mapper(value, key, json);
       }
@@ -1871,25 +2042,199 @@ export function isNumeric(value: any): boolean {
 }
 
 /**
+ * 解析Query字符串中的原始类型，目前仅支持转化布尔类型
+ *
+ * @param query 查询字符串
+ * @returns 解析后的查询字符串
+ */
+export function parsePrimitiveQueryString(rawQuery: Record<string, any>) {
+  if (!isPlainObject(rawQuery)) {
+    return rawQuery;
+  }
+
+  const query = JSONValueMap(rawQuery, value => {
+    /** 解析布尔类型，后续有需要在这里扩充 */
+    if (value === 'true' || value === 'false') {
+      return value === 'true';
+    }
+
+    return value;
+  });
+
+  return query;
+}
+
+/**
  * 获取URL链接中的query参数（包含hash mode）
  *
  * @param location Location对象，或者类Location结构的对象
+ * @param {Object} options 配置项
+ * @param {Boolean} options.parsePrimitive 是否将query的值解析为原始类型，目前仅支持转化布尔类型
  */
 export function parseQuery(
-  location?: Location | {query?: any; search?: any; [propName: string]: any}
+  location?: Location | {query?: any; search?: any; [propName: string]: any},
+  options?: {parsePrimitive?: boolean}
 ): Record<string, any> {
+  const {parsePrimitive = false} = options || {};
   const query =
     (location && !(location instanceof Location) && location?.query) ||
     (location && location?.search && qsparse(location.search.substring(1))) ||
     (window.location.search && qsparse(window.location.search.substring(1)));
+  const normalizedQuery = isPlainObject(query)
+    ? parsePrimitive
+      ? parsePrimitiveQueryString(query)
+      : query
+    : {};
   /* 处理hash中的query */
   const hash = window.location?.hash;
   let hashQuery = {};
   let idx = -1;
+
   if (typeof hash === 'string' && ~(idx = hash.indexOf('?'))) {
     hashQuery = qsparse(hash.substring(idx + 1));
   }
-  const normalizedQuery = isPlainObject(query) ? query : {};
 
   return merge(normalizedQuery, hashQuery);
+}
+
+/**
+ * 计算两个数组的差集
+ *
+ * @template T 数组元素类型
+ * @param allOptions 包含所有元素的数组
+ * @param options 被筛选的数组
+ * @param getValue 返回数组元素值的函数
+ * @returns 两个数组的差集
+ */
+const differenceFromAllCache: any = {
+  allOptions: null,
+  options: null,
+  res: []
+};
+export function differenceFromAll<T>(
+  allOptions: Array<T>,
+  options: Array<T>,
+  getValue: (item: T) => any
+): Array<T> {
+  if (
+    allOptions === differenceFromAllCache.allOptions &&
+    options === differenceFromAllCache.options
+  ) {
+    return differenceFromAllCache.res;
+  }
+  const map = new Map(allOptions.map(item => [getValue(item), item]));
+  const res = options.filter(item => !map.get(getValue(item)));
+  differenceFromAllCache.allOptions = allOptions;
+  differenceFromAllCache.options = options;
+  differenceFromAllCache.res = res;
+  return res;
+}
+
+/**
+ * 基于 schema 自动提取 trackExpression
+ * 可能会不准确，建议用户自己配置
+ * @param schema
+ * @returns
+ */
+export function buildTrackExpression(schema: any) {
+  if (!isPlainObject(schema) && !Array.isArray(schema)) {
+    return '';
+  }
+
+  const trackExpressions: Array<string> = [];
+  JSONTraverse(
+    schema,
+    (value, key: string) => {
+      if (typeof value !== 'string') {
+        return;
+      }
+
+      if (key === 'name') {
+        trackExpressions.push(isPureVariable(value) ? value : `\${${value}}`);
+      } else if (key === 'source') {
+        trackExpressions.push(value);
+      } else if (
+        key.endsWith('On') ||
+        key === 'condition' ||
+        key === 'trackExpression'
+      ) {
+        trackExpressions.push(
+          value.startsWith('${') ? value : `<script>${value}</script>`
+        );
+      } else if (value.includes('$')) {
+        trackExpressions.push(value);
+      }
+    },
+    10 // 最多遍历 10 层
+  );
+
+  return trackExpressions.join('|');
+}
+
+export function evalTrackExpression(
+  expression: string,
+  data: Record<string, any>
+) {
+  if (typeof expression !== 'string') {
+    return '';
+  }
+
+  const parts: Array<{
+    type: 'text' | 'script';
+    value: string;
+  }> = [];
+  while (true) {
+    // 这个是自动提取的时候才会用到，用户配置不要用到这个语法
+    const idx = expression.indexOf('<script>');
+    if (idx === -1) {
+      break;
+    }
+    const endIdx = expression.indexOf('</script>');
+    if (endIdx === -1) {
+      throw new Error(
+        'Invalid trackExpression miss end script token `</script>`'
+      );
+    }
+    if (idx) {
+      parts.push({
+        type: 'text',
+        value: expression.substring(0, idx)
+      });
+    }
+
+    parts.push({
+      type: 'script',
+      value: expression.substring(idx + 8, endIdx)
+    });
+    expression = expression.substring(endIdx + 9);
+  }
+
+  expression &&
+    parts.push({
+      type: 'text',
+      value: expression
+    });
+
+  return parts
+    .map(item => {
+      if (item.type === 'text') {
+        return tokenize(item.value, data);
+      }
+
+      return evalExpression(item.value, data);
+    })
+    .join('');
+}
+
+// 很奇怪的问题，react-json-view import 有些情况下 mod.default 才是 esModule
+export function importLazyComponent(mod: any) {
+  return mod.default.__esModule ? mod.default : mod;
+}
+
+export function replaceUrlParams(path: string, params: Record<string, any>) {
+  if (typeof path === 'string' && /\:\w+/.test(path)) {
+    return compile(path)(params);
+  }
+
+  return path;
 }

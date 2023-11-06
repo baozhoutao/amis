@@ -5,7 +5,7 @@
  */
 import React from 'react';
 import isInteger from 'lodash/isInteger';
-import {isMobile, localeable, LocaleProps} from 'amis-core';
+import {localeable, LocaleProps, resolveEventData} from 'amis-core';
 import {themeable, ThemeProps} from 'amis-core';
 import {autobind} from 'amis-core';
 import {Icon} from './icons';
@@ -93,9 +93,8 @@ export interface BasicPaginationProps {
    */
   popOverContainerSelector?: string;
 
-  onPageChange?: (page: number, perPage?: number) => void;
-
-  useMobileUI?: boolean;
+  onPageChange?: (page: number, perPage?: number, dir?: string) => void;
+  dispatchEvent?: Function;
 }
 export interface PaginationProps
   extends BasicPaginationProps,
@@ -141,13 +140,22 @@ export class Pagination extends React.Component<
     }
   }
 
-  handlePageNumChange(page: number, perPage?: number) {
-    const {disabled, onPageChange} = this.props;
+  async handlePageNumChange(page: number, perPage?: number, dir?: string) {
+    const {disabled, onPageChange, dispatchEvent} = this.props;
+    const _page = isNaN(Number(page)) || Number(page) < 1 ? 1 : page;
 
     if (disabled) {
       return;
     }
-    onPageChange?.(isNaN(Number(page)) || Number(page) < 1 ? 1 : page, perPage);
+
+    const rendererEvent = await dispatchEvent?.(
+      'change',
+      resolveEventData(this.props, {_page})
+    );
+    if (rendererEvent?.prevented) {
+      return;
+    }
+    onPageChange?.(_page, perPage, dir);
   }
 
   /**
@@ -272,13 +280,12 @@ export class Pagination extends React.Component<
       hasNext,
       popOverContainer,
       popOverContainerSelector,
-      useMobileUI,
+      mobileUI,
       translate: __
     } = this.props;
     let maxButtons = this.props.maxButtons;
     const {pageNum, perPage} = this.state;
     const lastPage = this.getLastPage();
-    const mobileUI = useMobileUI && isMobile();
 
     // 简易模式
     if (mode === 'simple') {
@@ -309,7 +316,11 @@ export class Pagination extends React.Component<
                 if (activePage < 2) {
                   return e.preventDefault();
                 }
-                return this.handlePageNumChange(activePage - 1);
+                return this.handlePageNumChange(
+                  activePage - 1,
+                  undefined,
+                  'backward'
+                );
               }}
               key="prev"
             >
@@ -325,7 +336,11 @@ export class Pagination extends React.Component<
                 if (!hasNext) {
                   return e.preventDefault();
                 }
-                return this.handlePageNumChange(activePage + 1, perPage);
+                return this.handlePageNumChange(
+                  activePage + 1,
+                  perPage,
+                  'forward'
+                );
               }}
               key="next"
             >

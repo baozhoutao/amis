@@ -3,7 +3,7 @@
  * @description
  * @author fex
  */
-import React, {useState, useEffect, useRef} from 'react';
+import React, {createElement} from 'react';
 import cxClass from 'classnames';
 import CloseIcon from '../icons/close.svg';
 import CloseSmallIcon from '../icons/close-small.svg';
@@ -101,6 +101,8 @@ import NewEdit from '../icons/new-edit.svg';
 import RotateLeft from '../icons/rotate-left.svg';
 import RotateRight from '../icons/rotate-right.svg';
 import ScaleOrigin from '../icons/scale-origin.svg';
+import If from '../icons/if.svg';
+
 import isObject from 'lodash/isObject';
 
 // 兼容原来的用法，后续不直接试用。
@@ -235,6 +237,7 @@ registerIcon('new-edit', NewEdit);
 registerIcon('rotate-left', RotateLeft);
 registerIcon('rotate-right', RotateRight);
 registerIcon('scale-origin', ScaleOrigin);
+registerIcon('if', If);
 
 export interface IconCheckedSchema {
   id: string;
@@ -284,25 +287,26 @@ export function Icon({
     });
   }
 
-  // 从css变量中获取icon
-  function refFn(dom: any) {
-    if (dom) {
-      const style = getComputedStyle(dom);
-      const svgStr = style.getPropertyValue('content');
-      const svg = /(<svg.*<\/svg>)/.exec(svgStr);
+  if (iconContent) {
+    // 从css变量中获取icon
+    const refFn = function (dom: any) {
+      if (dom) {
+        const domStyle = getComputedStyle(dom);
+        const svgStr = domStyle.getPropertyValue('content');
+        const svg = /(<svg.*<\/svg>)/.exec(svgStr);
 
-      if (svg) {
-        const svgHTML = svg[0].replace(/\\"/g, '"');
-        if (dom.svgHTMLClone !== svgHTML) {
-          dom.innerHTML = svgHTML;
-          // 存储svg，不直接用innerHTML是防止<circle />渲染后变成<circle></circle>的情况
-          dom.svgHTMLClone = svgHTML;
-          dom.style.display = '';
+        if (svg) {
+          const svgHTML = svg[0].replace(/\\"/g, '"');
+          if (dom.svgHTMLClone !== svgHTML) {
+            dom.innerHTML = svgHTML;
+            // 存储svg，不直接用innerHTML是防止<circle />渲染后变成<circle></circle>的情况
+            dom.svgHTMLClone = svgHTML;
+            dom.style.display = '';
+          }
         }
       }
-    }
-  }
-  if (iconContent) {
+    };
+
     return (
       <div
         onClick={onClick}
@@ -342,17 +346,35 @@ export function Icon({
     typeof (icon as IconCheckedSchema).id === 'string' &&
     (icon as IconCheckedSchema).id.startsWith('svg-')
   ) {
-    return (
-      <svg
-        onClick={onClick}
-        className={cx('icon', 'icon-object', className, classNameProp)}
-        style={style}
-      >
-        <use
-          xlinkHref={`#${(icon as IconCheckedSchema).id.replace(/^svg-/, '')}`}
-        ></use>
-      </svg>
-    );
+    const svg = icon as IconCheckedSchema;
+    const id = `${svg.id.replace(/^svg-/, '')}`;
+    if (!document.getElementById(id)) {
+      // 如果svg symbol不存在，则尝试将svg字符串赋值给icon，走svg字符串的逻辑
+      icon = svg.svg?.replace(/'/g, '');
+    } else {
+      return (
+        <svg
+          onClick={onClick}
+          className={cx('icon', 'icon-object', className, classNameProp)}
+          style={style}
+        >
+          <use xlinkHref={'#' + id}></use>
+        </svg>
+      );
+    }
+  }
+
+  // 直接传入svg字符串
+  if (typeof icon === 'string' && icon.startsWith('<svg')) {
+    const svgStr = /<svg .*?>(.*?)<\/svg>/.exec(icon);
+    const svgHTML = createElement('svg', {
+      onClick,
+      className: cx('icon', className, classNameProp),
+      style,
+      dangerouslySetInnerHTML: {__html: svgStr ? svgStr[1] : ''},
+      viewBox: '0 0 16 16'
+    });
+    return svgHTML;
   }
 
   // icon是链接

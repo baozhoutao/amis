@@ -302,6 +302,48 @@ order: 21
 }
 ```
 
+## 上传文件列表
+
+```schema: scope="body"
+{
+    "type": "form",
+    "api": "/api/mock2/form/saveForm",
+    "debug": true,
+    "data": {
+      "files": [
+        {
+          "id":"2ba48d02d349",
+          "value":"http://amis.bj.bcebos.com/amis/2017-11/1510713111265/fis3-react.md",
+          "url":"http://amis.bj.bcebos.com/amis/2017-11/1510713111265/fis3-react.md",
+          "filename":"file1.md",
+          "name":"file1.md",
+          "state":"uploaded"
+        },
+        {
+          "id":"14723e0bc640",
+          "value":"http://amis.bj.bcebos.com/amis/2017-11/1510713111265/fis3-react.md",
+          "url":"http://amis.bj.bcebos.com/amis/2017-11/1510713111265/fis3-react.md",
+          "filename":"file2.md",
+          "name":"file2.md",
+          "state":"uploaded"
+        }
+      ]
+    },
+    "body": [
+      {
+          "type": "input-file",
+          "name": "files",
+          "label": false,
+          "mode": "horizontal",
+          "accept": "*",
+          "receiver": "/api/mock2/upload/random",
+          "multiple": true,
+          "joinValues": false
+      }
+    ]
+}
+```
+
 ## 属性表
 
 除了支持 [普通表单项属性表](./formitem#%E5%B1%9E%E6%80%A7%E8%A1%A8) 中的配置以外，还支持下面一些配置
@@ -310,6 +352,7 @@ order: 21
 | ---------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | receiver         | [API](../../../docs/types/api) |                                                                                                            | 上传文件接口                                                                                                                         |
 | accept           | `string`                       | `text/plain`                                                                                               | 默认只支持纯文本，要支持其他类型，请配置此属性为文件后缀`.xxx`                                                                       |
+| capture          | `string`                       | `undefined`                                                                                                | 用于控制 input[type=file] 标签的 capture 属性，在移动端可控制输入来源                                                                |
 | asBase64         | `boolean`                      | `false`                                                                                                    | 将文件以`base64`的形式，赋值给当前组件                                                                                               |
 | asBlob           | `boolean`                      | `false`                                                                                                    | 将文件以二进制的形式，赋值给当前组件                                                                                                 |
 | maxSize          | `number`                       |                                                                                                            | 默认没有限制，当设置后，文件大小大于此值将不允许上传。单位为`B`                                                                      |

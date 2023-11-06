@@ -36,7 +36,7 @@ export interface RegionConfig {
   /**
    * 区域占位字符，用于提示
    */
-  placeholder?: string;
+  placeholder?: string | JSX.Element;
 
   /**
    * 对于复杂的控件需要用到这个配置。
@@ -200,6 +200,12 @@ export interface RendererInfo extends RendererScaffoldInfo {
 
   isBaseComponent?: boolean;
 
+  /**
+   * 是否列表类型组件，自身没数据但是绑定了数据源里面的数组字段
+   * 子组件需要能获取到单项字段，如list、each、cards
+   */
+  isListComponent?: boolean;
+
   disabledRendererPlugin?: boolean;
 
   /**
@@ -296,6 +302,9 @@ export interface RendererInfo extends RendererScaffoldInfo {
   tipName?: string;
   /** 共享上下文 */
   sharedContext?: Record<string, any>;
+  dialogTitle?: string; //弹窗标题用于弹窗大纲的展示
+  dialogType?: string; //区分确认对话框类型
+  subEditorVariable?: Array<{label: string; children: any}>; // 传递给子编辑器的组件自定义变量，如listSelect的选项名称和值
 }
 
 export type BasicRendererInfo = Omit<
@@ -342,7 +351,8 @@ export interface ScaffoldForm extends PopOverForm {
    * value 是具体错误信息。
    */
   validate?: (
-    values: any
+    values: any,
+    formStore: any
   ) =>
     | void
     | {[propName: string]: string}
@@ -820,6 +830,9 @@ export interface PluginInterface
     region?: EditorNodeType
   ) => Promise<SchemaCollection | void>;
 
+  /** 配置面板表单的 pipeOut function */
+  panelFormPipeOut?: (value: any) => any;
+
   /**
    * @deprecated 用 panelBodyCreator
    */
@@ -940,6 +953,13 @@ export interface PluginInterface
   ) => Schema | void;
 
   dispose?: () => void;
+
+  /**
+   * 组件 ref 回调，mount 和 unmount 的时候都会调用
+   * @param ref
+   * @returns
+   */
+  componentRef?: (node: EditorNodeType, ref: any) => void;
 }
 
 export interface RendererPluginEvent {
@@ -1028,7 +1048,10 @@ export abstract class BasePlugin implements PluginInterface {
         scaffoldForm: plugin.scaffoldForm,
         disabledRendererPlugin: plugin.disabledRendererPlugin,
         isBaseComponent: plugin.isBaseComponent,
-        rendererName: plugin.rendererName
+        isListComponent: plugin.isListComponent,
+        rendererName: plugin.rendererName,
+        memberImmutable: plugin.memberImmutable,
+        subEditorVariable: plugin.subEditorVariable
       };
     }
   }
@@ -1075,6 +1098,18 @@ export abstract class BasePlugin implements PluginInterface {
         plugin
       });
 
+      const baseProps = {
+        definitions: plugin.panelDefinitions,
+        submitOnChange: plugin.panelSubmitOnChange,
+        api: plugin.panelApi,
+        controls: plugin.panelControlsCreator
+          ? plugin.panelControlsCreator(context)
+          : plugin.panelControls!,
+        justify: plugin.panelJustify,
+        panelById: store.activeId,
+        pipeOut: plugin.panelFormPipeOut?.bind?.(plugin)
+      };
+
       panels.push({
         key: 'config',
         icon: plugin.panelIcon || plugin.icon || 'fa fa-cog',
@@ -1085,27 +1120,13 @@ export abstract class BasePlugin implements PluginInterface {
               const panelBody = await (body as Promise<SchemaCollection>);
 
               return this.manager.makeSchemaFormRender({
-                definitions: plugin.panelDefinitions,
-                submitOnChange: plugin.panelSubmitOnChange,
-                api: plugin.panelApi,
-                body: panelBody,
-                controls: plugin.panelControlsCreator
-                  ? plugin.panelControlsCreator(context)
-                  : plugin.panelControls!,
-                justify: plugin.panelJustify,
-                panelById: store.activeId
+                ...baseProps,
+                body: panelBody
               });
             }, omit(plugin.async, 'enable'))
           : this.manager.makeSchemaFormRender({
-              definitions: plugin.panelDefinitions,
-              submitOnChange: plugin.panelSubmitOnChange,
-              api: plugin.panelApi,
-              body: body as SchemaCollection,
-              controls: plugin.panelControlsCreator
-                ? plugin.panelControlsCreator(context)
-                : plugin.panelControls!,
-              justify: plugin.panelJustify,
-              panelById: store.activeId
+              ...baseProps,
+              body: body as SchemaCollection
             })
       });
     } else if (

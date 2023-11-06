@@ -1,5 +1,13 @@
 import React from 'react';
-import {ScopedContext, IScopedContext, filterTarget} from 'amis-core';
+import {
+  ScopedContext,
+  IScopedContext,
+  filterTarget,
+  isPureVariable,
+  resolveVariableAndFilter,
+  setVariable,
+  setThemeClassName
+} from 'amis-core';
 import {Renderer, RendererProps} from 'amis-core';
 import {SchemaNode, Schema, ActionObject} from 'amis-core';
 import {filter} from 'amis-core';
@@ -16,7 +24,7 @@ import {Icon} from 'amis-ui';
 import {ModalStore, IModalStore} from 'amis-core';
 import {findDOMNode} from 'react-dom';
 import {Spinner} from 'amis-ui';
-import {IServiceStore} from 'amis-core';
+import {IServiceStore, CustomStyle} from 'amis-core';
 import {
   BaseSchema,
   SchemaClassName,
@@ -397,9 +405,11 @@ export default class Dialog extends React.Component<DialogProps> {
 
     // 如果 dialog 里面不放 form，而是直接放表单项就会进到这里来。
     if (typeof name === 'string') {
-      data = {
-        [name]: data
+      const mergedData = {
+        ...store.form
       };
+      setVariable(mergedData, name, data);
+      data = mergedData;
     }
 
     store.setFormData(data);
@@ -457,17 +467,12 @@ export default class Dialog extends React.Component<DialogProps> {
       onAction: this.handleAction,
       onFinished: this.handleChildFinished,
       popOverContainer: this.getPopOverContainer,
-      affixOffsetTop: 0,
       onChange: this.handleFormChange,
       onInit: this.handleFormInit,
       onSaved: this.handleFormSaved,
       onActionSensor: this.handleActionSensor,
       syncLocation: false // 弹框中的 crud 一般不需要同步地址栏
     };
-
-    if (this.props.size === 'full') {
-      subProps.affixOffsetTop = 0;
-    }
 
     if (!(body as Schema).type) {
       return render(`body${key ? `/${key}` : ''}`, body, subProps);
@@ -489,8 +494,8 @@ export default class Dialog extends React.Component<DialogProps> {
 
   renderFooter() {
     const actions = this.buildActions();
-
-    if (!actions || !actions.length) {
+    let {hideActions} = this.props;
+    if (!actions || !actions.length || hideActions) {
       return null;
     }
 
@@ -500,11 +505,12 @@ export default class Dialog extends React.Component<DialogProps> {
       classnames: cx,
       showErrorMsg,
       showLoading,
-      show
+      show,
+      dialogFooterClassName
     } = this.props;
 
     return (
-      <div className={cx('Modal-footer')}>
+      <div className={cx('Modal-footer', dialogFooterClassName)}>
         {(showLoading !== false && store.loading) ||
         (showErrorMsg !== false && store.error) ? (
           <div className={cx('Dialog-info')} key="info">
@@ -560,21 +566,33 @@ export default class Dialog extends React.Component<DialogProps> {
       confirmText,
       confirmBtnLevel,
       cancelBtnLevel,
-      popOverContainer
+      popOverContainer,
+      inDesign,
+      themeCss,
+      id,
+      ...rest
     } = {
       ...this.props,
       ...store.schema
     } as DialogProps;
 
     const Wrapper = wrapperComponent || Modal;
+
     return (
       <Wrapper
+        {...rest}
         classPrefix={classPrefix}
         className={cx(className)}
         style={style}
         size={size}
         height={height}
         width={width}
+        modalClassName={setThemeClassName('dialogClassName', id, themeCss)}
+        modalMaskClassName={setThemeClassName(
+          'dialogMaskClassName',
+          id,
+          themeCss
+        )}
         backdrop="static"
         onHide={this.handleSelfClose}
         keyboard={closeOnEsc && !store.loading}
@@ -594,7 +612,13 @@ export default class Dialog extends React.Component<DialogProps> {
         cancelBtnLevel={cancelBtnLevel}
       >
         {title && typeof title === 'string' ? (
-          <div className={cx('Modal-header', headerClassName)}>
+          <div
+            className={cx(
+              'Modal-header',
+              headerClassName,
+              setThemeClassName('dialogHeaderClassName', id, themeCss)
+            )}
+          >
             {showCloseButton !== false && !store.loading ? (
               <a
                 data-tooltip={__('Dialog.close')}
@@ -609,12 +633,23 @@ export default class Dialog extends React.Component<DialogProps> {
                 />
               </a>
             ) : null}
-            <div className={cx('Modal-title')}>
+            <div
+              className={cx(
+                'Modal-title',
+                setThemeClassName('dialogTitleClassName', id, themeCss)
+              )}
+            >
               {filter(__(title), store.formData)}
             </div>
           </div>
         ) : title ? (
-          <div className={cx('Modal-header', headerClassName)}>
+          <div
+            className={cx(
+              'Modal-header',
+              headerClassName,
+              setThemeClassName('dialogHeaderClassName', id, themeCss)
+            )}
+          >
             {showCloseButton !== false && !store.loading ? (
               <a
                 data-tooltip={__('Dialog.close')}
@@ -651,13 +686,54 @@ export default class Dialog extends React.Component<DialogProps> {
           : null}
 
         {(!store.entered && lazyRender) || (lazySchema && !body) ? (
-          <div className={cx('Modal-body', bodyClassName)} role="dialog-body">
+          <div
+            className={cx(
+              'Modal-body',
+              bodyClassName,
+              setThemeClassName('dialogBodyClassName', id, themeCss)
+            )}
+            role="dialog-body"
+          >
             <Spinner overlay show size="lg" loadingConfig={loadingConfig} />
           </div>
         ) : body ? (
           // dialog-body 用于在 editor 中定位元素
-          <div className={cx('Modal-body', bodyClassName)} role="dialog-body">
+          <div
+            className={cx(
+              'Modal-body',
+              bodyClassName,
+              setThemeClassName('dialogBodyClassName', id, themeCss)
+            )}
+            role="dialog-body"
+          >
             {this.renderBody(body, 'body')}
+            <CustomStyle
+              config={{
+                themeCss: themeCss,
+                classNames: [
+                  {
+                    key: 'dialogClassName'
+                  },
+                  {
+                    key: 'dialogMaskClassName'
+                  },
+                  {
+                    key: 'dialogHeaderClassName'
+                  },
+                  {
+                    key: 'dialogTitleClassName'
+                  },
+                  {
+                    key: 'dialogBodyClassName'
+                  },
+                  {
+                    key: 'dialogFooterClassName'
+                  }
+                ],
+                id: id
+              }}
+              env={env}
+            />
           </div>
         ) : null}
 
@@ -835,9 +911,8 @@ export class DialogRenderer extends Dialog {
     const {onAction, store, onConfirm, env, dispatchEvent, onClose} =
       this.props;
     if (action.from === this.$$id) {
-      return onAction
-        ? onAction(e, action, data, throwErrors, delegate || this.context)
-        : false;
+      // 可能是孩子又派送回来到自己了，这时候就不要处理了。
+      return;
     }
 
     const scoped = this.context as IScopedContext;
@@ -941,7 +1016,7 @@ export class DialogRenderer extends Dialog {
 
           const reidrect =
             action.redirect && filter(action.redirect, store.data);
-          reidrect && env.jumpTo(reidrect, action);
+          reidrect && env.jumpTo(reidrect, action, store.data);
           action.reload &&
             this.reloadTarget(
               filterTarget(action.reload, store.data),
@@ -1021,7 +1096,7 @@ export class DialogRenderer extends Dialog {
 
     if (reload) {
       scoped.reload(reload, store.data);
-    } else if (scoped.component?.reload) {
+    } else if (scoped.component !== this && scoped.component?.reload) {
       scoped.component.reload();
     } else {
       // 没有设置，则自动让页面中 crud 刷新。
@@ -1047,7 +1122,7 @@ export class DialogRenderer extends Dialog {
     setTimeout(() => {
       if (reload) {
         scoped.reload(reload, store.data);
-      } else if (scoped.component?.reload) {
+      } else if (scoped.component !== this && scoped.component?.reload) {
         scoped.component.reload();
       } else {
         // 没有设置，则自动让页面中 crud 刷新。

@@ -4,7 +4,9 @@ import {
   OnEventProps,
   Renderer,
   RendererProps,
-  runActions
+  runActions,
+  CustomStyle,
+  setThemeClassName
 } from 'amis-core';
 import {filter} from 'amis-core';
 import {autobind, createObject} from 'amis-core';
@@ -222,7 +224,12 @@ export default class IFrame extends React.Component<IFrameProps, object> {
       sandbox,
       referrerpolicy,
       translate: __,
-      env
+      id,
+      wrapperCustomStyle,
+      env,
+      themeCss,
+      baseControlClassName,
+      classnames: cx
     } = this.props;
 
     let tempStyle: any = {};
@@ -252,18 +259,38 @@ export default class IFrame extends React.Component<IFrameProps, object> {
     }
 
     return (
-      <iframe
-        name={name}
-        className={className}
-        frameBorder={frameBorder}
-        style={style}
-        ref={this.IFrameRef}
-        onLoad={this.onLoad}
-        src={finalSrc}
-        allow={allow}
-        referrerPolicy={referrerpolicy}
-        sandbox={sandbox}
-      />
+      <>
+        <iframe
+          name={name}
+          className={cx(
+            'IFrame',
+            className,
+            setThemeClassName('baseControlClassName', id, themeCss),
+            setThemeClassName('wrapperCustomStyle', id, wrapperCustomStyle)
+          )}
+          frameBorder={frameBorder}
+          style={style}
+          ref={this.IFrameRef}
+          onLoad={this.onLoad}
+          src={finalSrc}
+          allow={allow}
+          referrerPolicy={referrerpolicy}
+          sandbox={sandbox}
+        />
+        <CustomStyle
+          config={{
+            wrapperCustomStyle,
+            id,
+            themeCss,
+            classNames: [
+              {
+                key: 'baseControlClassName'
+              }
+            ]
+          }}
+          env={env}
+        />
+      </>
     );
   }
 }

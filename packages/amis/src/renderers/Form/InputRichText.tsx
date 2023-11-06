@@ -4,7 +4,9 @@ import {
   FormControlProps,
   FormBaseControl,
   buildApi,
-  qsstringify
+  qsstringify,
+  resolveEventData,
+  autobind
 } from 'amis-core';
 import cx from 'classnames';
 import {LazyComponent} from 'amis-core';
@@ -116,7 +118,7 @@ export default class RichTextControl extends React.Component<
     this.handleChange = this.handleChange.bind(this);
     const imageReceiver = normalizeApi(
       props.receiver,
-      props.receiver.method || 'post'
+      props.receiver?.method || 'post'
     );
     imageReceiver.data = imageReceiver.data || {};
     const imageApi = buildApi(imageReceiver, props.data, {
@@ -182,6 +184,7 @@ export default class RichTextControl extends React.Component<
       const fetcher = props.env.fetcher;
       this.config = {
         ...props.options,
+        onLoaded: this.handleTinyMceLoaded,
         images_upload_handler: (blobInfo: any, progress: any) =>
           new Promise(async (resolve, reject) => {
             const formData = new FormData();
@@ -203,6 +206,15 @@ export default class RichTextControl extends React.Component<
             );
 
             try {
+              if (!imageApi.url) {
+                var reader = new FileReader();
+                reader.readAsDataURL(blobInfo.blob());
+                reader.onloadend = function () {
+                  var base64data = reader.result;
+                  resolve(base64data);
+                };
+                return;
+              }
               const receiver = {
                 adaptor: (payload: object) => {
                   return {
@@ -250,18 +262,31 @@ export default class RichTextControl extends React.Component<
     });
   }
 
-  handleChange(
+  async handleChange(
     value: any,
     submitOnChange?: boolean,
     changeImmediately?: boolean
   ) {
-    const {onChange, disabled} = this.props;
+    const {onChange, disabled, dispatchEvent} = this.props;
 
     if (disabled) {
       return;
     }
 
+    const rendererEvent = await dispatchEvent(
+      'change',
+      resolveEventData(this.props, {value})
+    );
+    if (rendererEvent?.prevented) {
+      return;
+    }
     onChange?.(value, submitOnChange, changeImmediately);
+  }
+
+  @autobind
+  handleTinyMceLoaded(tinymce: any) {
+    const env = this.props.env;
+    return env?.loadTinymcePlugin?.(tinymce);
   }
 
   render() {
@@ -272,6 +297,7 @@ export default class RichTextControl extends React.Component<
       value,
       onChange,
       disabled,
+      static: isStatic,
       size,
       vendor,
       env,
@@ -281,6 +307,19 @@ export default class RichTextControl extends React.Component<
     } = this.props;
 
     const finnalVendor = vendor || (env.richTextToken ? 'froala' : 'tinymce');
+
+    if (isStatic) {
+      return (
+        <div
+          className={cx(`${ns}RichTextControl`, className, {
+            'is-focused': this.state.focused,
+            'is-disabled': disabled,
+            [`${ns}RichTextControl--border${ucFirst(borderMode)}`]: borderMode
+          })}
+          dangerouslySetInnerHTML={{__html: env.filterHtml(value)}}
+        ></div>
+      );
+    }
 
     return (
       <div

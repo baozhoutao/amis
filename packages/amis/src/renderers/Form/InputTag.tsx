@@ -21,6 +21,7 @@ import {isMobile} from 'amis-core';
 import {FormOptionsSchema} from '../../Schema';
 import {supportStatic} from './StaticHoc';
 import {TooltipWrapperSchema} from '../TooltipWrapper';
+import {matchSorter} from 'match-sorter';
 
 /**
  * Tag 输入框
@@ -302,8 +303,8 @@ export default class TagControl extends React.PureComponent<
 
   // 移动端特殊处理
   addItem2(option: Option) {
-    const {useMobileUI, valueField = 'value'} = this.props;
-    const mobileUI = useMobileUI && isMobile();
+    const {mobileUI, valueField = 'value'} = this.props;
+
     if (mobileUI) {
       const selectedOptions = this.state.selectedOptions.concat();
       let index = selectedOptions.findIndex(
@@ -390,8 +391,8 @@ export default class TagControl extends React.PureComponent<
 
   @autobind
   async handleBlur(e: any) {
-    const {selectedOptions, onChange, useMobileUI, options} = this.props;
-    const mobileUI = useMobileUI && isMobile();
+    const {selectedOptions, onChange, mobileUI, options} = this.props;
+
     if (mobileUI && options.length) {
       return;
     }
@@ -510,13 +511,13 @@ export default class TagControl extends React.PureComponent<
 
   @autobind
   handleOptionChange(option: Option) {
-    const {useMobileUI} = this.props;
-    const mobileUI = useMobileUI && isMobile();
+    const {mobileUI} = this.props;
+
     if (mobileUI) {
       this.addItem2(option);
       return;
     }
-    if (this.isReachMax() || this.state.inputValue || !option) {
+    if (this.isReachMax() || !option) {
       return;
     }
 
@@ -573,16 +574,22 @@ export default class TagControl extends React.PureComponent<
       loadingConfig,
       valueField,
       env,
-      useMobileUI
+      mobileUI,
+      labelField
     } = this.props;
-    const mobileUI = useMobileUI && isMobile();
+
+    const term = this.state.inputValue;
     const finnalOptions = Array.isArray(options)
       ? filterTree(
           options,
-          item =>
-            (Array.isArray(item.children) && !!item.children.length) ||
-            (item[valueField || 'value'] !== undefined &&
-              (mobileUI || !~selectedOptions.indexOf(item))),
+          (item: Option, key: number, level: number, paths: Array<Option>) =>
+            item[valueField || 'value'] !== undefined &&
+            (mobileUI || !~selectedOptions.indexOf(item)) &&
+            (matchSorter([item].concat(paths), term, {
+              keys: [labelField || 'label', valueField || 'value'],
+              threshold: matchSorter.rankings.CONTAINS
+            }).length ||
+              (Array.isArray(item.children) && !!item.children.length)),
           0,
           true
         )
@@ -625,7 +632,7 @@ export default class TagControl extends React.PureComponent<
                 overflowTagPopover={overflowTagPopover}
                 popOverContainer={popOverContainer || env.getModalContainer}
                 allowInput={!mobileUI || (mobileUI && !options?.length)}
-                useMobileUI={useMobileUI}
+                mobileUI={mobileUI}
               >
                 {loading ? (
                   <Spinner loadingConfig={loadingConfig} size="sm" />
@@ -649,7 +656,7 @@ export default class TagControl extends React.PureComponent<
                     <div>
                       <ListMenu
                         selectedOptions={selectedOptions}
-                        useMobileUI={useMobileUI}
+                        mobileUI={mobileUI}
                         options={finnalOptions.concat(this.state.cacheOptions)}
                         itemRender={this.renderItem}
                         highlightIndex={highlightedIndex}
@@ -679,7 +686,7 @@ export default class TagControl extends React.PureComponent<
                             placeholder={__('placeholder.enter') + '...'}
                             allowInput
                             value={this.state.inputValue}
-                            useMobileUI={useMobileUI}
+                            mobileUI={mobileUI}
                             clearable
                             maxTagCount={maxTagCount}
                             onChange={value => {

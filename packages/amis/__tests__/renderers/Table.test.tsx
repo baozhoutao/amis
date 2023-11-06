@@ -1159,3 +1159,162 @@ test('Renderer:table-each', () => {
     '<div class="cxd-Each"><span class="cxd-TplField"><span><span class="label label-info m-l-sm">a</span></span></span><span class="cxd-TplField"><span><span class="label label-info m-l-sm">b</span></span></span><span class="cxd-TplField"><span><span class="label label-info m-l-sm">c</span></span></span></div>'
   );
 });
+
+test('Renderer:table-column-quickEdit-inline', async () => {
+  const {container, getByText} = render(
+    amisRender(
+      {
+        type: 'table',
+        title: '表格',
+        data: {
+          items: [
+            {
+              engine: 'Trident - wixp4',
+              browser: 'Internet Explorer 4.0',
+              platform: 'Win 95+',
+              version: '4',
+              grade: 'X',
+              badgeText: '默认',
+              id: 1
+            }
+          ]
+        },
+        columns: [
+          {
+            name: 'engine',
+            label: 'Engine',
+            id: 'u:2e5658776790'
+          },
+          {
+            name: 'version',
+            label: 'Version',
+            id: 'u:5c41ffc2ecb0'
+          },
+          {
+            label: '选项',
+            name: 'optionValue',
+            id: 'checkbox_${index}',
+            type: 'switch',
+            quickEdit: {
+              type: 'switch',
+              mode: 'inline',
+              id: 'u:4201a414cde3'
+            }
+          },
+          {
+            label: '操作',
+            type: 'operation',
+            buttons: [
+              {
+                label: '赋值',
+                type: 'button',
+                onEvent: {
+                  click: {
+                    actions: [
+                      {
+                        actionType: 'setValue',
+                        componentId: 'checkbox_${index}',
+                        args: {
+                          value: true
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {},
+      makeEnv({})
+    )
+  );
+
+  await waitFor(() => {
+    expect(getByText('赋值')).toBeInTheDocument();
+    expect(container.querySelector('.cxd-Switch')).toBeInTheDocument();
+    expect(container.querySelector('.is-checked')).not.toBeInTheDocument();
+  });
+
+  fireEvent.click(getByText(/赋值/));
+
+  await waitFor(() => {
+    expect(container.querySelector('.is-checked')).toBeInTheDocument();
+  });
+});
+
+test('Renderer:table-column-quickEdit-saveImmediately', async () => {
+  const fetcher = jest
+    .fn()
+    .mockImplementation(() =>
+      Promise.resolve({status: 200, data: {status: 0, msg: 'ok'}})
+    );
+  const {container, getByText} = render(
+    amisRender(
+      {
+        type: 'table',
+        title: '表格',
+        data: {
+          items: [
+            {
+              engine: 'Trident - wixp4',
+              browser: 'Internet Explorer 4.0',
+              platform: 'Win 95+',
+              version: '4',
+              grade: 'X',
+              badgeText: '默认',
+              id: 1
+            }
+          ]
+        },
+        columns: [
+          {
+            name: 'engine',
+            label: 'Engine',
+            id: 'u:2e5658776790'
+          },
+          {
+            name: 'version',
+            label: 'Version',
+            id: 'u:5c41ffc2ecb0',
+            quickEdit: {
+              type: 'input-text',
+              saveImmediately: {
+                api: '/api/mock2/saveImmediately/${id}'
+              }
+            }
+          }
+        ]
+      },
+      {},
+      makeEnv({
+        fetcher: fetcher
+      })
+    )
+  );
+
+  await wait(200);
+  const btn = container.querySelector('.cxd-Field-quickEditBtn');
+  expect(btn).toBeInTheDocument();
+  fireEvent.click(btn!);
+  await wait(200);
+  const input = container.querySelector('input[name=version]');
+  expect(input).toBeInTheDocument();
+  fireEvent.change(input!, {target: {value: '5'}});
+
+  await wait(200);
+  expect(getByText('确认')).toBeInTheDocument();
+  fireEvent.click(getByText('确认'));
+  await wait(500);
+  expect(fetcher).toBeCalledTimes(1);
+  expect(fetcher.mock.calls[0][0].data).toMatchObject({
+    engine: 'Trident - wixp4',
+    browser: 'Internet Explorer 4.0',
+    platform: 'Win 95+',
+    version: '5',
+    grade: 'X',
+    badgeText: '默认',
+    id: 1
+  });
+});

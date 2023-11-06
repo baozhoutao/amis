@@ -30,6 +30,7 @@ export class GridPlugin extends BasePlugin {
   name = '分栏';
   isBaseComponent = true;
   description = '分栏布局';
+  searchKeywords = '水平分栏';
   docLink = '/amis/zh-CN/components/grid';
   tags = ['布局容器'];
   order = -2;
@@ -313,6 +314,7 @@ export class GridPlugin extends BasePlugin {
                     label: '水平对齐',
                     tiled: true,
                     pipeIn: defaultValue('left'),
+                    inputClassName: 'flex-nowrap',
                     options: [
                       {
                         value: 'left',
@@ -339,6 +341,7 @@ export class GridPlugin extends BasePlugin {
                     label: '垂直对齐',
                     tiled: true,
                     pipeIn: defaultValue('top'),
+                    inputClassName: 'flex-nowrap',
                     options: [
                       {
                         value: 'top',
@@ -522,6 +525,7 @@ export class GridPlugin extends BasePlugin {
                       label: false,
                       tiled: true,
                       clearable: true,
+                      inputClassName: 'flex-nowrap',
                       options: [
                         {
                           value: 'top',

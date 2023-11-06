@@ -1,6 +1,6 @@
 import React from 'react';
 import {findDOMNode} from 'react-dom';
-import {Renderer, RendererProps} from 'amis-core';
+import {Renderer, RendererProps, buildStyle} from 'amis-core';
 import {SchemaNode, Schema, ActionObject} from 'amis-core';
 import {Button, Spinner, SpinnerExtraProps} from 'amis-ui';
 import {ListStore, IListStore} from 'amis-core';
@@ -13,7 +13,11 @@ import {
   autobind,
   createObject
 } from 'amis-core';
-import {isPureVariable, resolveVariableAndFilter} from 'amis-core';
+import {
+  isPureVariable,
+  resolveVariableAndFilter,
+  filterClassNameObject
+} from 'amis-core';
 import Sortable from 'sortablejs';
 import {filter} from 'amis-core';
 import {Icon} from 'amis-ui';
@@ -279,7 +283,7 @@ export default class Cards extends React.Component<GridProps, object> {
     }
 
     updateItems && store.initItems(items);
-    typeof props.selected !== 'undefined' &&
+    Array.isArray(props.selected) &&
       store.updateSelected(props.selected, props.valueField);
     return updateItems;
   }
@@ -426,7 +430,7 @@ export default class Cards extends React.Component<GridProps, object> {
           api: saveImmediately.api,
           reload: options?.reload
         },
-        values
+        item.locals
       );
       return;
     }
@@ -832,7 +836,13 @@ export default class Cards extends React.Component<GridProps, object> {
   }
 
   // editor中重写，请勿更改前两个参数
-  renderCard(index: number, card: any, item: IItem, itemClassName: string) {
+  renderCard(
+    index: number,
+    card: any,
+    item: IItem,
+    itemClassName: string,
+    style: any
+  ) {
     const {
       render,
       classnames: cx,
@@ -843,12 +853,15 @@ export default class Cards extends React.Component<GridProps, object> {
     } = this.props;
 
     let cardProps: Partial<CardProps | Card2Props> = {
-      className: cx((card && card.className) || '', {
-        'is-checked': item.checked,
-        'is-modified': item.modified,
-        'is-moved': item.moved,
-        'is-dragging': store.dragging
-      }),
+      className: cx(
+        filterClassNameObject((card && card.className) || '', item.locals),
+        {
+          'is-checked': item.checked,
+          'is-modified': item.modified,
+          'is-moved': item.moved,
+          'is-dragging': store.dragging
+        }
+      ),
       item,
       key: index,
       itemIndex: item.index,
@@ -876,7 +889,7 @@ export default class Cards extends React.Component<GridProps, object> {
     }
 
     return (
-      <div key={item.index} className={cx(itemClassName)}>
+      <div key={item.index} className={cx(itemClassName)} style={style}>
         {render(
           `card/${index}`,
           {
@@ -901,6 +914,7 @@ export default class Cards extends React.Component<GridProps, object> {
       itemClassName,
       placeholder,
       card,
+      data,
       render,
       affixHeader,
       masonryLayout,
@@ -909,7 +923,6 @@ export default class Cards extends React.Component<GridProps, object> {
       translate: __,
       loading = false,
       loadingConfig,
-      affixOffsetTop,
       env
     } = this.props;
 
@@ -938,19 +951,35 @@ export default class Cards extends React.Component<GridProps, object> {
           .join(' ');
     }
 
+    // 自定义行列间距
+    let wrapStyles: React.CSSProperties = {};
+    let itemStyles: React.CSSProperties = {};
+    if (style?.gutterX >= 0) {
+      wrapStyles.marginLeft = wrapStyles.marginRight =
+        -(style?.gutterX / 2) + 'px';
+      itemStyles.paddingLeft = itemStyles.paddingRight =
+        style?.gutterX / 2 + 'px';
+    }
+
+    if (style?.gutterY >= 0) {
+      itemStyles.marginBottom = style?.gutterY + 'px';
+    }
+    // 修正grid多列计算错误
+    if (columnsCount && !masonryLayout) {
+      itemStyles.flex = `0 0 ${100 / columnsCount}%`;
+      itemStyles.maxWidth = `${100 / columnsCount}%`;
+    }
+
     return (
       <div
         ref={this.bodyRef}
         className={cx('Cards', className, {
           'Cards--unsaved': !!store.modified || !!store.moved
         })}
-        style={style}
+        style={buildStyle(style, data)}
       >
         {affixHeader ? (
-          <div
-            className={cx('Cards-fixedTop')}
-            style={{top: affixOffsetTop ?? env?.affixOffsetTop ?? 0}}
-          >
+          <div className={cx('Cards-fixedTop')}>
             {header}
             {heading}
           </div>
@@ -964,9 +993,10 @@ export default class Cards extends React.Component<GridProps, object> {
         {store.items.length ? (
           <div
             className={cx('Cards-body Grid', itemsClassName, masonryClassName)}
+            style={wrapStyles}
           >
             {store.items.map((item, index) =>
-              this.renderCard(index, card, item, itemFinalClassName)
+              this.renderCard(index, card, item, itemFinalClassName, itemStyles)
             )}
           </div>
         ) : (

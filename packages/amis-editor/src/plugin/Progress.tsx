@@ -92,26 +92,6 @@ export class ProgressPlugin extends BasePlugin {
                 needDeleteProps: ['placeholder'],
                 valueType: 'number' // 期望数值类型，不过 amis中会尝试字符串 trans 数值类型
               }),
-              getSchemaTpl('menuTpl', {
-                label: tipedLabel(
-                  '数值模板',
-                  '值渲染模板，支持JSX、数据域变量使用, 默认 ${value}%'
-                ),
-                name: 'valueTpl',
-                variables: [
-                  {
-                    label: '值字段',
-                    children: [
-                      {
-                        label: '进度值',
-                        value: 'value',
-                        tag: 'number'
-                      }
-                    ]
-                  }
-                ],
-                requiredDataPropsVariables: true
-              }),
 
               getSchemaTpl('switch', {
                 name: 'showLabel',
@@ -246,25 +226,24 @@ export class ProgressPlugin extends BasePlugin {
                 multiple: true,
                 label: tipedLabel(
                   '颜色',
-                  '分配不同的值段，用不同的颜色提示用户'
+                  '分配不同的值段，用不同的颜色提示用户。若只配置一个颜色不配置value，默认value为100'
                 ),
                 items: [
+                  {
+                    placeholder: 'color',
+                    type: 'input-color',
+                    name: 'color'
+                  },
                   {
                     type: 'input-number',
                     name: 'value',
                     placeholder: 'value',
-                    required: true,
                     columnClassName: 'w-xs',
                     unique: true,
+                    requiredOn: 'data.map?.length > 1',
                     min: 0,
                     step: 10,
                     precision: 0
-                  },
-                  {
-                    placeholder: 'color',
-                    type: 'input-color',
-                    name: 'color',
-                    required: true
                   }
                 ],
                 value: [
@@ -272,8 +251,30 @@ export class ProgressPlugin extends BasePlugin {
                   {color: '#fad733', value: 60},
                   {color: '#28a745', value: 100}
                 ],
-                pipeIn: (value: any) => {
-                  return Array.isArray(value) ? value : [];
+                pipeIn: (mapItem: any) => {
+                  // schema传入
+                  if (Array.isArray(mapItem) && mapItem.length) {
+                    return typeof mapItem[0] === 'string'
+                      ? mapItem.map((item: string, index: number) => {
+                          const span = 100 / mapItem.length;
+                          return {value: (index + 1) * span, color: item};
+                        })
+                      : mapItem.length === 1 && !mapItem[0].value
+                      ? [{color: mapItem[0].color, value: 100}]
+                      : mapItem;
+                  } else {
+                    return mapItem ? [mapItem] : [];
+                  }
+                },
+
+                pipeOut: (mapItem: any, origin: any, data: any) => {
+                  // 传入schema
+                  if (mapItem.length === 1 && !mapItem[0].value) {
+                    // 只有一个颜色且value未设置时默认为100
+                    return [{color: mapItem[0].color, value: 100}];
+                  } else {
+                    return mapItem;
+                  }
                 }
               })
             ]

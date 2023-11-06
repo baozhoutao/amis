@@ -77,9 +77,9 @@ export class BaseTabsTransferRenderer<
       valueField,
       env,
       data,
+      searchApi,
       translate: __
     } = this.props;
-    const {searchApi} = option;
 
     if (searchApi) {
       try {
@@ -114,7 +114,7 @@ export class BaseTabsTransferRenderer<
         });
       } catch (e) {
         if (!env.isCancel(e)) {
-          env.notify('error', e.message);
+          !searchApi.silent && env.notify('error', e.message);
         }
 
         return [];
@@ -126,7 +126,8 @@ export class BaseTabsTransferRenderer<
           return !!(
             (Array.isArray(option.children) && option.children.length) ||
             !!matchSorter([option].concat(paths), term, {
-              keys: [labelField || 'label', valueField || 'value']
+              keys: [labelField || 'label', valueField || 'value'],
+              threshold: matchSorter.rankings.CONTAINS
             }).length
           );
         },
@@ -241,7 +242,7 @@ export class TabsTransferRenderer extends BaseTabsTransferRenderer<TabsTransferP
 
   @autobind
   optionItemRender(option: any, states: ItemRenderStates) {
-    const {menuTpl, render, data} = this.props;
+    const {menuTpl, render, data, classnames} = this.props;
     const ctx = arguments[2] || {};
 
     if (menuTpl) {
@@ -256,7 +257,7 @@ export class TabsTransferRenderer extends BaseTabsTransferRenderer<TabsTransferP
       });
     }
 
-    return BaseSelection.itemRender(option, states);
+    return BaseSelection.itemRender(option, {...states, classnames});
   }
 
   // 动作
@@ -289,6 +290,8 @@ export class TabsTransferRenderer extends BaseTabsTransferRenderer<TabsTransferP
       sortable,
       loading,
       searchResultMode,
+      selectMode,
+      searchable,
       showArrow,
       deferLoad,
       leftDeferLoad,
@@ -301,8 +304,10 @@ export class TabsTransferRenderer extends BaseTabsTransferRenderer<TabsTransferP
       loadingConfig,
       valueField = 'value',
       labelField = 'label',
+      valueTpl,
+      menuTpl,
       data,
-      useMobileUI
+      mobileUI
     } = this.props;
 
     return (
@@ -323,8 +328,10 @@ export class TabsTransferRenderer extends BaseTabsTransferRenderer<TabsTransferP
           onLeftDeferLoad={leftDeferLoad}
           selectTitle={selectTitle}
           resultTitle={resultTitle}
-          optionItemRender={this.optionItemRender}
-          resultItemRender={this.resultItemRender}
+          selectMode={selectMode}
+          searchable={searchable}
+          optionItemRender={menuTpl ? this.optionItemRender : undefined}
+          resultItemRender={valueTpl ? this.resultItemRender : undefined}
           onTabChange={this.onTabChange}
           itemHeight={
             toNumber(itemHeight) > 0 ? toNumber(itemHeight) : undefined
@@ -333,7 +340,7 @@ export class TabsTransferRenderer extends BaseTabsTransferRenderer<TabsTransferP
           labelField={labelField}
           valueField={valueField}
           ctx={data}
-          useMobileUI={useMobileUI}
+          mobileUI={mobileUI}
         />
 
         <Spinner

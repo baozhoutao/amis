@@ -21,6 +21,7 @@ export class CollapseGroupPlugin extends BasePlugin {
   isBaseComponent = true;
   description =
     '折叠面板，当信息量较大且分类较多时，可使用折叠面板进行分类收纳。';
+  docLink = '/amis/zh-CN/components/collapse';
   tags = ['布局容器'];
   icon = 'fa fa-align-justify';
   pluginIcon = 'collapse-plugin';
@@ -207,11 +208,10 @@ export class CollapseGroupPlugin extends BasePlugin {
                         '默认展开此面板'
                       )
                     },
-                    {
+                    getSchemaTpl('title', {
                       name: 'header',
-                      placeholder: '标题',
-                      type: i18nEnabled ? 'input-text-i18n' : 'input-text'
-                    }
+                      placeholder: '标题'
+                    })
                   ],
                   onChange: (
                     value: Array<any>,

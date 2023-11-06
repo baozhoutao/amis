@@ -1,19 +1,19 @@
 /**
  * @file 功能类函数集合。
  */
-import {utils, hasIcon, mapObject} from 'amis';
-import isEqual from 'lodash/isEqual';
-import {isObservable, reaction} from 'mobx';
-import DeepDiff, {Diff} from 'deep-diff';
-import isPlainObject from 'lodash/isPlainObject';
-import isNumber from 'lodash/isNumber';
-import type {Schema} from 'amis';
-import type {SchemaObject} from 'amis';
-import assign from 'lodash/assign';
-import cloneDeep from 'lodash/cloneDeep';
+import {hasIcon, mapObject, utils} from 'amis';
+import type {PlainObject, Schema, SchemaNode} from 'amis';
 import {getGlobalData} from 'amis-theme-editor-helper';
 import {isExpression, resolveVariableAndFilter} from 'amis-core';
 import type {VariableItem} from 'amis-ui';
+import {isObservable, reaction} from 'mobx';
+import DeepDiff, {Diff} from 'deep-diff';
+import assign from 'lodash/assign';
+import cloneDeep from 'lodash/cloneDeep';
+import isPlainObject from 'lodash/isPlainObject';
+import isEqual from 'lodash/isEqual';
+import isNumber from 'lodash/isNumber';
+import debounce from 'lodash/debounce';
 
 const {
   guid,
@@ -66,16 +66,20 @@ export function cleanUndefined(obj: any) {
   return obj;
 }
 
+let themeUselessPropKeys: Array<string> = [];
+
 /**
  * 把 schema 处理一下传给 Preview 去渲染
  * 给每个节点加个 $$id 这样方便编辑
  * @param obj
  */
-export function JSONPipeIn(obj: any): any {
+export function JSONPipeIn(obj: any, generateId = false, idMap: any = {}): any {
   if (!isObject(obj) || obj.$$typeof) {
     return obj;
-  } else if (Array.isArray(obj)) {
-    return obj.map(JSONPipeIn);
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map((item, index) => JSONPipeIn(item, generateId));
   }
 
   let toUpdate: any = {};
@@ -86,6 +90,21 @@ export function JSONPipeIn(obj: any): any {
     toUpdate.$$id = guid();
   }
 
+  // 因为旧版本的 bug，导致有些存量页面，出现大量无用配置
+  // 所以这里做个兼容，把这些无用的配置清理掉
+  // 找特征，只有同时存在前三个属性，说明这是以前的脏数据
+  if (
+    themeUselessPropKeys.length > 2 &&
+    obj[themeUselessPropKeys[0]] &&
+    obj[themeUselessPropKeys[1]] &&
+    obj[themeUselessPropKeys[2]]
+  ) {
+    flag = true;
+    themeUselessPropKeys.forEach(key => {
+      toUpdate[key] = undefined;
+    });
+  }
+
   // ['visible', 'visibleOn', 'hidden', 'hiddenOn', 'toggled'].forEach(key => {
   //   if (obj.hasOwnProperty(key)) {
   //     flag = true;
@@ -93,6 +112,26 @@ export function JSONPipeIn(obj: any): any {
   //     toUpdate[`$$${key}`] = obj[key];
   //   }
   // });
+
+  if (obj.type) {
+    // 处理下历史style数据，整理到themeCss
+    obj = style2ThemeCss(obj);
+
+    // 重新生成组件ID
+    if (generateId) {
+      flag = true;
+
+      /** 脚手架构建的Schema提前构建好了组件 ID，此时无需生成 ID，避免破坏事件动作 */
+      if (
+        (!obj.__origin || obj.__origin !== 'scaffold') &&
+        (typeof obj.id !== 'string' || !obj.id || obj.id.startsWith('u:'))
+      ) {
+        const newId = generateNodeId();
+        obj.id && (idMap[obj.id] = newId);
+        toUpdate.id = newId;
+      }
+    }
+  }
 
   Object.keys(obj).forEach(key => {
     let prop = obj[key];
@@ -103,7 +142,7 @@ export function JSONPipeIn(obj: any): any {
       let flag2 = false;
 
       let patched = prop.map((item: any) => {
-        let patched = JSONPipeIn(item);
+        let patched = JSONPipeIn(item, generateId, idMap);
 
         if (patched !== item) {
           flag2 = true;
@@ -117,7 +156,14 @@ export function JSONPipeIn(obj: any): any {
         toUpdate[key] = patched;
       }
     } else {
-      let patched = JSONPipeIn(prop);
+      let patched = JSONPipeIn(prop, generateId, idMap);
+
+      if (generateId && typeof patched === 'string') {
+        Object.keys(idMap).forEach(oldId => {
+          const newId = idMap[oldId];
+          patched = (patched as string).replaceAll(oldId, newId);
+        });
+      }
 
       if (patched !== prop) {
         flag = true;
@@ -205,33 +251,6 @@ export function JSONPipeOut(
   return obj;
 }
 
-/**
- * 如果存在themeCss属性，则给对应的className加上name
- */
-export function addStyleClassName(obj: Schema) {
-  const themeCss = obj.themeCss || obj.css;
-  // page暂时不做处理
-  if (!themeCss || obj.type === 'page') {
-    return obj;
-  }
-  let toUpdate: any = {};
-  Object.keys(themeCss).forEach(key => {
-    if (key !== '$$id') {
-      let classname = `${key}-${obj.id.replace('u:', '')}`;
-      if (!obj[key]) {
-        toUpdate[key] = classname;
-      } else if (!~obj[key].indexOf(classname)) {
-        toUpdate[key] = obj[key] + ' ' + classname;
-      }
-    }
-  });
-  obj = cleanUndefined({
-    ...obj,
-    ...toUpdate
-  });
-  return obj;
-}
-
 export function JSONGetByPath(
   json: any,
   paths: Array<string>,
@@ -309,7 +328,7 @@ export function JSONGetParentById(
   id: string,
   skipArray: boolean = false
 ): any {
-  let paths = JSONGetPathById(json, id);
+  const paths = JSONGetPathById(json, id);
   if (paths === null || !paths.length) {
     return null;
   }
@@ -444,7 +463,9 @@ export function JSONDelete(
 export function JSONMerge(json: any, target: any) {
   if (!isObject(json) || !isObject(target)) {
     return target;
-  } else if (!isObjectShallowModified(json, target)) {
+  }
+
+  if (!isObjectShallowModified(json, target)) {
     return json;
   }
 
@@ -475,7 +496,7 @@ export function JSONChangeInArray(
   id: string,
   operation: (arr: Array<any>, node: any, index: number) => void
 ) {
-  let paths = JSONGetPathById(json, id);
+  const paths = JSONGetPathById(json, id);
 
   if (paths === null) {
     return json;
@@ -603,7 +624,8 @@ export function JsonGenerateID(json: any) {
     return;
   }
 
-  if (json.type && !json.id) {
+  /** 脚手架构建的Schema提前构建好了组件 ID，此时无需生成 ID，避免破坏事件动作 */
+  if (json.type && (!json.__origin || json.__origin !== 'scaffold')) {
     json.id = generateNodeId();
   }
 
@@ -617,7 +639,7 @@ export function JsonGenerateID(json: any) {
 }
 
 export function createElementFromHTML(htmlString: string): HTMLElement {
-  var div = document.createElement('div');
+  const div = document.createElement('div');
   // bca-disable-next-line
   div.innerHTML = htmlString.trim();
 
@@ -688,7 +710,9 @@ export function filterSchemaForConfig(schema: any, valueWithConfig?: any): any {
 export function filterSchemaForEditor(schema: any): any {
   if (Array.isArray(schema)) {
     return schema.map(item => filterSchemaForEditor(item));
-  } else if (isPlainObject(schema)) {
+  }
+
+  if (isPlainObject(schema)) {
     const mapped: any = {};
     let modified = false;
 
@@ -716,8 +740,7 @@ export function filterSchemaForEditor(schema: any): any {
         modified = true;
       }
     });
-    const finalSchema = modified ? mapped : schema;
-    return finalSchema;
+    return modified ? mapped : schema;
   }
 
   return schema;
@@ -886,15 +909,20 @@ function applyChange(target: any, source: any, change: DiffChange) {
  * 遍历 schema
  * @param json
  * @param mapper
+ * @param ignore
  */
 export function JSONTraverse(
   json: any,
-  mapper: (value: any, key: string | number, host: Object) => any
+  mapper: (value: any, key: string | number, host: Object) => any,
+  ignore?: (value: any, key: string | number) => boolean | void
 ) {
   Object.keys(json).forEach(key => {
     const value: any = json[key];
+    if (ignore?.(value, key)) {
+      return;
+    }
     if (isPlainObject(value) || Array.isArray(value)) {
-      JSONTraverse(value, mapper);
+      JSONTraverse(value, mapper, ignore);
     } else {
       mapper(value, key, json);
     }
@@ -927,11 +955,7 @@ export function isString(obj: any) {
  *  判断是否是对象类型
  * */
 export function isObject(curObj: any) {
-  let isObject = false;
-  if (Object.prototype.toString.call(curObj).slice(8, -1) === 'Object') {
-    isObject = true;
-  }
-  return isObject;
+  return Object.prototype.toString.call(curObj).slice(8, -1) === 'Object';
 }
 
 export function jsonToJsonSchema(
@@ -993,10 +1017,7 @@ export function isHasPluginIcon(plugin: any) {
  * 备注：当前只有一个flex布局容器
  */
 export function isLayoutPlugin(plugin: any) {
-  if (plugin && plugin.type === 'flex') {
-    return true;
-  }
-  return false;
+  return !!(plugin && plugin.type === 'flex');
 }
 
 /**
@@ -1050,10 +1071,7 @@ export function needDefaultWidth(elemType: string) {
     'input-range',
     'flex'
   ];
-  if (needDefaultWidthElemType.indexOf(elemType) > -1) {
-    return true;
-  }
-  return false;
+  return needDefaultWidthElemType.includes(elemType);
 }
 
 /** 是否开启应用国际化 */
@@ -1062,14 +1080,12 @@ export function getI18nEnabled() {
 }
 
 /** schema 翻译方法 */
-export function translateSchema(schema: any, replaceData?: any) {
+export function translateSchema(schema: any, replaceData?: any, skipFn?: any) {
   replaceData = replaceData || (window as any)?.editorStore?.appCorpusData;
   if (!isPlainObject(replaceData)) {
     return schema;
   }
-  return mapObject(schema, (item: any) => {
-    return replaceData[item] || item;
-  });
+  return mapObject(schema, (item: any) => replaceData[item] || item, skipFn);
 }
 
 /** 应用级别的翻译方法 */
@@ -1084,7 +1100,6 @@ export function appTranslate(value?: string) {
  * 判断是否需要给组件增加填充占位样式
  */
 export function needFillPlaceholder(curProps: any) {
-  let needFillPlaceholder = false;
   if (!curProps) {
     return false;
   }
@@ -1099,41 +1114,98 @@ export function needFillPlaceholder(curProps: any) {
   if (curProps.node?.schema?.isFreeContainer) {
     return true;
   }
+
   // 支持在plugin中配置
-  if (curProps.$$editor?.needFillPlaceholder) {
-    needFillPlaceholder = true;
-  } else if (curProps.regionConfig?.needFillPlaceholder) {
-    needFillPlaceholder = true;
-  }
-  return needFillPlaceholder;
+  return !!(
+    curProps.$$editor?.needFillPlaceholder ||
+    curProps.regionConfig?.needFillPlaceholder
+  );
 }
+
 // 设置主题数据
 export function setThemeConfig(config: any) {
   themeConfig = config;
   themeOptionsData = getGlobalData(themeConfig);
+  themeUselessPropKeys = Object.keys(getThemeConfig());
 }
 
-// 将主题数据传入组件的schema
-export function setThemeDefaultData(data: any) {
-  const schemaData = cloneDeep(data);
-  schemaData.themeConfig = themeConfig;
-  assign(schemaData, themeOptionsData);
-  return schemaData;
+// 获取主题数据和样式选择器数据
+export function getThemeConfig() {
+  return {themeConfig, ...themeOptionsData};
 }
 
-// 删除主题的配置数据
-export function deleteThemeConfigData(data: any) {
-  if (!data) {
+const backgroundMap: PlainObject = {
+  'background-color': 'background'
+};
+
+/**
+ * 将style转换为组件ThemeCSS格式
+ *
+ * @param data - 组件schema
+ * @returns 处理后的数据
+ */
+export function style2ThemeCss(data: any) {
+  if (
+    !data?.style ||
+    isEmpty(data.style) ||
+    !['tpl', 'page', 'container', 'chart', 'flex', 'grid'].includes(data.type)
+  ) {
     return data;
   }
-  const schemaData = cloneDeep(data);
-
-  delete schemaData.themeConfig;
-  Object.keys(themeOptionsData).forEach(key => {
-    delete schemaData[key];
+  const style = {...data.style};
+  let baseControlClassName: PlainObject = {};
+  const border: PlainObject = {};
+  const paddingAndMargin: PlainObject = {};
+  const font: PlainObject = {};
+  Object.keys(style).forEach(key => {
+    if (
+      ['background', 'background-color', 'radius', 'boxShadow'].includes(key)
+    ) {
+      baseControlClassName[(backgroundMap[key] || key) + ':default'] =
+        style[key];
+      delete style[key];
+    } else if (
+      ['color', 'fontSize', 'fontWeight', 'font-family', 'lineHeight'].includes(
+        key
+      )
+    ) {
+      font[key] = style[key];
+      delete style[key];
+    } else if (key.includes('border')) {
+      border[key] = style[key];
+      delete style[key];
+    } else if (key.includes('padding') || key.includes('margin')) {
+      paddingAndMargin[key] = style[key];
+      delete style[key];
+    }
   });
-
-  return schemaData;
+  baseControlClassName = Object.assign(
+    isEmpty(baseControlClassName) ? {} : baseControlClassName,
+    isEmpty(border) ? {} : {'border:default': border},
+    isEmpty(paddingAndMargin)
+      ? {}
+      : {'padding-and-margin:default': paddingAndMargin},
+    isEmpty(font) ? {} : {'font:default': font}
+  );
+  if (isEmpty(baseControlClassName)) {
+    return data;
+  }
+  let themeCss = {baseControlClassName};
+  if (!data.themeCss) {
+    themeCss = {
+      baseControlClassName
+    };
+  } else {
+    themeCss.baseControlClassName = {
+      ...data.themeCss.baseControlClassName,
+      ...baseControlClassName
+    };
+  }
+  return {
+    ...data,
+    style,
+    themeCss
+  };
 }
 
 /**
@@ -1149,10 +1221,16 @@ export async function resolveVariablesFromScope(node: any, manager: any) {
     (await manager?.dataSchema?.getDataPropsAsOptions()) ?? []
   );
 
+  // 子编辑器内读取的host节点自定义变量，非数据域方式，如listSelect的选项值
+  let hostNodeVaraibles = [];
+  if (manager?.store?.isSubEditor) {
+    hostNodeVaraibles = manager.config?.hostNode?.info?.subEditorVariable || [];
+  }
+
   const variables: VariableItem[] =
     manager?.variableManager?.getVariableFormulaOptions() || [];
 
-  return [...dataPropsAsOptions, ...variables].filter(
+  return [...hostNodeVaraibles, ...dataPropsAsOptions, ...variables].filter(
     (item: any) => item.children?.length
   );
 }
@@ -1221,4 +1299,144 @@ export const updateComponentContext = (variables: any[]) => {
     });
   }
   return items;
+};
+
+/**
+ * dom 滚动到可见区域
+ * @param selector dom 选择器
+ */
+export const scrollToActive = debounce((selector: string) => {
+  const dom = document.querySelector(selector);
+  if (dom) {
+    (dom as any).scrollIntoViewIfNeeded
+      ? (dom as any).scrollIntoViewIfNeeded()
+      : dom.scrollIntoView();
+  }
+}, 200);
+
+/**
+ * 获取弹窗事件
+ * @param schema 遍历的schema
+ * @param listType 列表形式，弹窗list或label value形式的数据源
+ * @param filterId 要过滤弹窗的id
+ */
+export const getDialogActions = (
+  schema: Schema,
+  listType: 'list' | 'source',
+  filterId?: string
+) => {
+  let dialogActions: any[] = [];
+  JSONTraverse(
+    schema,
+    (value: any, key: string, object: any) => {
+      // definitions中的弹窗
+      if (key === 'type' && value === 'page') {
+        const definitions = object.definitions;
+        if (definitions) {
+          Object.keys(definitions).forEach(key => {
+            if (key.includes('ref-')) {
+              if (listType === 'list') {
+                dialogActions.push(definitions[key]);
+              } else {
+                const dialog = definitions[key];
+                const dialogTypeName =
+                  dialog.type === 'drawer'
+                    ? '抽屉式弹窗'
+                    : dialog.dialogType
+                    ? '确认对话框'
+                    : '弹窗';
+                dialogActions.push({
+                  label: `${dialog.title || '-'}（${dialogTypeName}）`,
+                  value: dialog.$$id
+                });
+              }
+            }
+          });
+        }
+      }
+      if (
+        (key === 'actionType' && value === 'dialog') ||
+        (key === 'actionType' && value === 'drawer') ||
+        (key === 'actionType' && value === 'confirmDialog')
+      ) {
+        const dialogBodyMap = new Map([
+          [
+            'dialog',
+            {
+              title: '弹窗',
+              body: 'dialog'
+            }
+          ],
+          [
+            'drawer',
+            {
+              title: '抽屉式弹窗',
+              body: 'drawer'
+            }
+          ],
+          [
+            'confirmDialog',
+            {
+              title: '确认对话框',
+              // 兼容历史args参数
+              body: ['dialog', 'args']
+            }
+          ]
+        ]);
+        let dialogBody = dialogBodyMap.get(value)?.body!;
+        let dialogBodyContent = Array.isArray(dialogBody)
+          ? object[dialogBody[0]] || object[dialogBody[1]]
+          : object[dialogBody];
+
+        if (
+          dialogBodyMap.has(value) &&
+          dialogBodyContent &&
+          !dialogBodyContent.$ref
+        ) {
+          if (listType == 'list') {
+            // 没有 type: dialog的历史数据兼容一下
+            dialogActions.push({
+              ...dialogBodyContent,
+              type: Array.isArray(dialogBody) ? 'dialog' : dialogBody
+            });
+          } else {
+            // 新建弹窗切换到现有弹窗把自身过滤掉
+            if (!filterId || (filterId && filterId !== dialogBodyContent.id)) {
+              dialogActions.push({
+                label: `${dialogBodyContent?.title || '-'}（${
+                  dialogBodyMap.get(value)?.title
+                }）`,
+                value: dialogBodyContent.$$id
+              });
+            }
+          }
+        }
+      }
+    },
+    (value, key) => key.toString().startsWith('__')
+  );
+  return dialogActions;
+};
+
+/**
+ * 获取弹窗的类型，来源于事件或definitions,由于历史数据可能没有type: dialog,在这里兼容一下
+ * @param json
+ * @param previewDialogId
+ */
+export const getFixDialogType = (json: Schema, dialogId: string) => {
+  const dialogBodyMap = {
+    dialog: 'dialog',
+    drawer: 'drawer',
+    confirmDialog: 'dialog'
+  };
+  let parentSchema = JSONGetParentById(json, dialogId);
+  // 事件中的弹窗
+  if (parentSchema.actionType) {
+    return dialogBodyMap[parentSchema.actionType as keyof typeof dialogBodyMap];
+  }
+  // definitions中的弹窗
+  else {
+    let dialogRefSchema = JSONGetById(parentSchema, dialogId);
+    return dialogRefSchema.type;
+  }
 };

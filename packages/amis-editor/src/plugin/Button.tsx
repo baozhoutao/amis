@@ -168,7 +168,7 @@ export class ButtonPlugin extends BasePlugin {
           visibleOn: visibleOn,
           editorThemePath: `button1.size.\${size}.body.border`
         }),
-        getSchemaTpl('theme:size', {
+        getSchemaTpl('theme:select', {
           label: '图标尺寸',
           name: `themeCss.iconClassName.iconSize:${state}`,
           visibleOn: visibleOn,
@@ -364,7 +364,7 @@ export class ButtonPlugin extends BasePlugin {
             ]
           },
           {
-            title: '自定义样式',
+            title: '基本样式',
             body: [
               {
                 type: 'select',
@@ -413,14 +413,16 @@ export class ButtonPlugin extends BasePlugin {
             ? [
                 getSchemaTpl('eventControl', {
                   name: 'onEvent',
-                  ...getEventControlConfig(this.manager, context)
+                  ...getEventControlConfig(this.manager, context),
+                  rawType: 'button'
                 }),
                 getOldActionSchema(this.manager, context)
               ]
             : [
                 getSchemaTpl('eventControl', {
                   name: 'onEvent',
-                  ...getEventControlConfig(this.manager, context)
+                  ...getEventControlConfig(this.manager, context),
+                  rawType: 'button'
                 })
               ]
       }

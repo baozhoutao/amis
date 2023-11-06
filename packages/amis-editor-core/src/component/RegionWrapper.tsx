@@ -10,7 +10,7 @@ import {EditorNodeContext, EditorNodeType} from '../store/node';
 export interface RegionWrapperProps {
   name: string;
   label: string;
-  placeholder?: string;
+  placeholder?: string | JSX.Element;
   preferTag?: string;
   wrapperResolve?: (dom: HTMLElement) => HTMLElement;
   editorStore: EditorStoreType;
@@ -62,12 +62,14 @@ export class RegionWrapper extends React.Component<RegionWrapperProps> {
   }
 
   componentDidMount() {
-    this.editorNode &&
-      this.markDom(
-        this.editorNode.id,
-        this.props.name,
-        this.props.rendererName
-      );
+    if (this.editorNode && isAlive(this.editorNode)) {
+      this.editorNode &&
+        this.markDom(
+          this.editorNode.id,
+          this.props.name,
+          this.props.rendererName
+        );
+    }
   }
 
   componentDidUpdate(prevProps: RegionWrapperProps) {

@@ -6,7 +6,7 @@ import {InputBoxProps} from './InputBox';
 import {uncontrollable} from 'amis-core';
 import {Icon} from './icons';
 import Input from './Input';
-import {autobind, isMobile, ucFirst} from 'amis-core';
+import {autobind, ucFirst} from 'amis-core';
 import {LocaleProps, localeable} from 'amis-core';
 import isPlainObject from 'lodash/isPlainObject';
 import TooltipWrapper, {TooltipObject} from './TooltipWrapper';
@@ -23,7 +23,6 @@ export interface ResultBoxProps
   onClear?: (e: React.MouseEvent<HTMLElement>) => void;
   allowInput?: boolean;
   inputPlaceholder: string;
-  useMobileUI?: boolean;
   hasDropDownArrow?: boolean;
   maxTagCount?: number;
   overflowTagPopover?: TooltipObject;
@@ -187,35 +186,49 @@ export class ResultBox extends React.Component<ResultBoxProps> {
             </div>
           </TooltipWrapper>
         ) : (
-          <div
-            className={cx('ResultBox-value', {
-              'is-invalid': isShowInvalid
-            })}
+          <TooltipWrapper
+            container={popOverContainer}
+            placement={'top'}
+            tooltip={item['label']}
+            trigger={'hover'}
             key={index}
           >
-            <span className={cx('ResultBox-valueLabel')}>
-              {itemRender(item)}
-            </span>
-            <a data-index={index} onClick={this.removeItem}>
-              <Icon icon="close" className="icon" />
-            </a>
-          </div>
+            <div
+              className={cx('ResultBox-value', {
+                'is-invalid': isShowInvalid
+              })}
+            >
+              <span className={cx('ResultBox-valueLabel')}>
+                {itemRender(item)}
+              </span>
+              <a data-index={index} onClick={this.removeItem}>
+                <Icon icon="close" className="icon" />
+              </a>
+            </div>
+          </TooltipWrapper>
         );
       });
     }
 
     return tags.map((item, index) => (
-      <div
-        className={cx('ResultBox-value', {
-          'is-invalid': showInvalidMatch && item?.__unmatched
-        })}
+      <TooltipWrapper
+        container={popOverContainer}
+        placement={'top'}
+        tooltip={item['label']}
+        trigger={'hover'}
         key={index}
       >
-        <span className={cx('ResultBox-valueLabel')}>{itemRender(item)}</span>
-        <a data-index={index} onClick={this.removeItem}>
-          <Icon icon="close" className="icon" />
-        </a>
-      </div>
+        <div
+          className={cx('ResultBox-value', {
+            'is-invalid': showInvalidMatch && item?.__unmatched
+          })}
+        >
+          <span className={cx('ResultBox-valueLabel')}>{itemRender(item)}</span>
+          <a data-index={index} onClick={this.removeItem}>
+            <Icon icon="close" className="icon" />
+          </a>
+        </div>
+      </TooltipWrapper>
     ));
   }
 
@@ -244,7 +257,7 @@ export class ResultBox extends React.Component<ResultBoxProps> {
       onFocus,
       onBlur,
       borderMode,
-      useMobileUI,
+      mobileUI,
       hasDropDownArrow,
       actions,
       onClear,
@@ -255,7 +268,6 @@ export class ResultBox extends React.Component<ResultBoxProps> {
       ...rest
     } = this.props;
     const isFocused = this.state.isFocused;
-    const mobileUI = useMobileUI && isMobile();
 
     return (
       <div

@@ -1,7 +1,9 @@
 import React from 'react';
 import {findDOMNode} from 'react-dom';
+import {matchSorter} from 'match-sorter';
 import isEqual from 'lodash/isEqual';
 import isString from 'lodash/isString';
+import cloneDeep from 'lodash/cloneDeep';
 import {
   Renderer,
   RendererEnv,
@@ -24,11 +26,13 @@ import {
   spliceTree,
   findTreeIndex,
   findTree,
-  isObject
+  isObject,
+  noop,
+  str2function
 } from 'amis-core';
 import {isEffectiveApi} from 'amis-core';
 import {themeable, ThemeProps} from 'amis-core';
-import {Icon, SpinnerExtraProps} from 'amis-ui';
+import {Icon, SpinnerExtraProps, SearchBox} from 'amis-ui';
 import {BadgeObject} from 'amis-ui';
 import {RemoteOptionsProps, withRemoteConfig} from 'amis-ui';
 import {Spinner, Menu} from 'amis-ui';
@@ -36,7 +40,7 @@ import {ScopedContext, IScopedContext} from 'amis-core';
 import type {NavigationItem} from 'amis-ui/lib/components/menu';
 import type {MenuItemProps} from 'amis-ui/lib/components/menu/MenuItem';
 
-import type {Payload} from 'amis-core';
+import type {LinkItem, Payload} from 'amis-core';
 import type {
   BaseSchema,
   SchemaObject,
@@ -265,6 +269,51 @@ export interface NavSchema extends BaseSchema {
    * 子菜单项展开浮层样式
    */
   popupClassName?: string;
+
+  /**
+   * 是否开启搜索
+   */
+  searchable?: boolean;
+
+  /**
+   * 搜索框相关配置
+   */
+  searchConfig?: {
+    /**
+     * 搜索框外层CSS样式类
+     */
+    className?: string;
+
+    /**
+     * 搜索匹配函数
+     */
+    matchFunc?: string | any;
+
+    /**
+     * 占位符
+     */
+    placeholder?: string;
+
+    /**
+     * 是否为 Mini 样式。
+     */
+    mini?: boolean;
+
+    /**
+     * 是否为加强样式
+     */
+    enhance?: boolean;
+
+    /**
+     * 是否可清除
+     */
+    clearable?: boolean;
+
+    /**
+     * 是否立马搜索。
+     */
+    searchImediately?: boolean;
+  };
 }
 
 export interface Link {
@@ -296,6 +345,8 @@ export interface NavigationState {
     opacity?: number;
   };
   collapsed?: boolean;
+  keyword?: string;
+  filteredLinks?: Link[];
 }
 
 export interface NavigationProps
@@ -350,7 +401,10 @@ export class Navigation extends React.Component<
     y: 0,
     x: 0
   };
-  state: NavigationState = {};
+  state: NavigationState = {
+    keyword: '',
+    filteredLinks: []
+  };
 
   @autobind
   async handleClick(link: Link, depth: number) {
@@ -553,7 +607,8 @@ export class Navigation extends React.Component<
       popOverContainer,
       env,
       classnames: cx,
-      data
+      data,
+      collapsed
     } = this.props;
 
     if (!links) {
@@ -563,111 +618,202 @@ export class Navigation extends React.Component<
       return [];
     }
 
-    return links.map((link: Link) => {
-      const beforeIcon: Array<any> = [];
-      const afterIcon: Array<any> = [];
+    const isCollapsedNode = collapsed && depth === 1;
 
-      link.icon &&
-        (Array.isArray(link.icon) ? link.icon : [link.icon]).forEach(
-          (item, i) => {
-            if (React.isValidElement(item)) {
-              beforeIcon.push(item);
-            } else if (isString(item)) {
-              beforeIcon.push(<Icon key={`icon-${i}`} cx={cx} icon={item} />);
-            } else if (item && isObject(item)) {
-              const icon = (
-                <Icon key={`icon-${i}`} cx={cx} icon={item['icon']} />
-              );
-              if (item['position'] === 'after') {
-                afterIcon.push(icon);
-              } else {
-                beforeIcon.push(icon);
+    return links
+      .filter((link: Link) => !(link.hidden === true || link.visible === false))
+      .map((link: Link) => {
+        const beforeIcon: Array<any> = [];
+        const afterIcon: Array<any> = [];
+
+        link.icon &&
+          (Array.isArray(link.icon) ? link.icon : [link.icon]).forEach(
+            (item, i) => {
+              if (React.isValidElement(item)) {
+                beforeIcon.push(item);
+              } else if (isString(item)) {
+                beforeIcon.push(
+                  <Icon
+                    key={`icon-${i}`}
+                    cx={cx}
+                    icon={item}
+                    className={isCollapsedNode ? '' : 'mr-2'}
+                  />
+                );
+              } else if (item && isObject(item)) {
+                const isAfter = item['position'] === 'after';
+                const icon = (
+                  <Icon
+                    key={`icon-${i}`}
+                    cx={cx}
+                    icon={item['icon']}
+                    className={isCollapsedNode ? '' : isAfter ? 'ml-2' : 'mr-2'}
+                  />
+                );
+                if (isAfter) {
+                  afterIcon.push(icon);
+                } else {
+                  beforeIcon.push(icon);
+                }
               }
             }
+          );
+
+        const label =
+          typeof link.label === 'string'
+            ? filter(link.label, data)
+            : React.isValidElement(link.label)
+            ? React.cloneElement(link.label)
+            : render('inline', link.label as SchemaCollection);
+
+        // 仅垂直内联模式支持
+        const isOverflow =
+          stacked &&
+          mode !== 'float' &&
+          !link.expanded &&
+          link.overflow &&
+          isObject(link.overflow) &&
+          link.overflow.enable;
+        let children = link.children;
+        if (isOverflow) {
+          const {
+            maxVisibleCount,
+            overflowIndicator = 'fa fa-ellipsis-h',
+            overflowLabel,
+            overflowClassName
+          } = link.overflow;
+          // 默认展示5个
+          const maxCount = maxVisibleCount || 2;
+          if (maxCount < (children?.length || 0)) {
+            children = children?.map((child: Link, index: number) => {
+              return {
+                ...child,
+                label:
+                  index === maxCount ? (
+                    <span className={cx(overflowClassName)}>
+                      <Icon
+                        icon={overflowIndicator}
+                        className="icon Nav-item-icon"
+                      />
+                      {overflowLabel && isObject(overflowLabel)
+                        ? render('nav-overflow-label', overflowLabel)
+                        : overflowLabel}
+                    </span>
+                  ) : (
+                    child.label
+                  ),
+                hidden: index > maxCount ? true : link.hidden,
+                expandMore: index === maxCount
+              };
+            });
           }
-        );
-
-      const label =
-        typeof link.label === 'string'
-          ? filter(link.label, data)
-          : React.isValidElement(link.label)
-          ? React.cloneElement(link.label)
-          : render('inline', link.label as SchemaCollection);
-
-      // 仅垂直内联模式支持
-      const isOverflow =
-        stacked &&
-        mode !== 'float' &&
-        !link.expanded &&
-        link.overflow &&
-        isObject(link.overflow) &&
-        link.overflow.enable;
-      let children = link.children;
-      if (isOverflow) {
-        const {
-          maxVisibleCount,
-          overflowIndicator = 'fa fa-ellipsis-h',
-          overflowLabel,
-          overflowClassName
-        } = link.overflow;
-        // 默认展示5个
-        const maxCount = maxVisibleCount || 2;
-        if (maxCount < (children?.length || 0)) {
-          children = children?.map((child: Link, index: number) => {
-            return {
-              ...child,
-              label:
-                index === maxCount ? (
-                  <span className={cx(overflowClassName)}>
-                    <Icon
-                      icon={overflowIndicator}
-                      className="icon Nav-item-icon"
-                    />
-                    {overflowLabel && isObject(overflowLabel)
-                      ? render('nav-overflow-label', overflowLabel)
-                      : overflowLabel}
-                  </span>
-                ) : (
-                  child.label
-                ),
-              hidden: index > maxCount ? true : link.hidden,
-              expandMore: index === maxCount
-            };
-          });
         }
-      }
 
-      return {
-        link,
-        label,
-        labelExtra: afterIcon.length ? (
-          <i className={cx('Nav-Menu-item-icon-after')}>{afterIcon}</i>
-        ) : null,
-        icon: beforeIcon.length ? <i>{beforeIcon}</i> : null,
-        children: children
-          ? this.normalizeNavigations(children, depth + 1)
-          : [],
-        path: link.to,
-        open: link.unfolded,
-        extra: itemActions
-          ? render('inline', itemActions, {
-              data: createObject(data, link),
-              popOverContainer: popOverContainer
-                ? popOverContainer
-                : env.getModalContainer
-                ? env.getModalContainer
-                : () => document.body,
-              // 点击操作之后 就关闭 因为close方法里执行了preventDefault
-              closeOnClick: true
-            })
-          : null,
-        disabled: !!link.disabled,
-        disabledTip: link.disabledTip,
-        hidden: link.hidden,
-        className: link.className,
-        mode: link.mode
+        return {
+          link,
+          label,
+          labelExtra: afterIcon.length ? (
+            <i className={cx('Nav-Menu-item-icon-after')}>{afterIcon}</i>
+          ) : null,
+          icon: beforeIcon.length ? <i>{beforeIcon}</i> : null,
+          children: children
+            ? this.normalizeNavigations(children, depth + 1)
+            : [],
+          path: link.to,
+          open: link.unfolded,
+          extra: itemActions
+            ? render('inline', itemActions, {
+                data: createObject(data, link),
+                popOverContainer: popOverContainer
+                  ? popOverContainer
+                  : env && env.getModalContainer
+                  ? env.getModalContainer
+                  : () => document.body,
+                // 点击操作之后 就关闭 因为close方法里执行了preventDefault
+                closeOnClick: true
+              })
+            : null,
+          disabled: !!link.disabled,
+          disabledTip: link.disabledTip,
+          hidden: link.hidden,
+          className: link.className,
+          mode: link.mode
+        };
+      });
+  }
+
+  @autobind
+  async handleSearch(keyword: string) {
+    const {links, searchConfig = {}} = this.props;
+    const originLinks = cloneDeep(links ?? []);
+    let matchFunc = searchConfig?.matchFunc;
+
+    if (!keyword) {
+      this.setState({keyword: '', filteredLinks: []});
+      return;
+    }
+
+    if (matchFunc && typeof matchFunc === 'string') {
+      matchFunc = str2function(matchFunc, 'link', 'keyword');
+    } else if (typeof matchFunc === 'function') {
+      /** 使用props下发的函数 */
+    } else {
+      matchFunc = (link: Link, keyword: string) => {
+        const matched = matchSorter([link], keyword, {
+          keys: ['label', 'title', 'key'],
+          threshold: matchSorter.rankings.CONTAINS
+        })?.length;
+
+        return matched || (link?.children && link.children?.length > 0);
       };
-    });
+    }
+
+    const filterLinks = (root: Link[], text: string) => {
+      const filterChildren = (result: Link[], link: Link) => {
+        if (matchFunc(link, text)) {
+          result.push({...link, unfolded: true});
+          return result;
+        }
+
+        if (Array.isArray(link.children)) {
+          const children = link.children.reduce(filterChildren, []);
+
+          if (children.length) {
+            result.push({...link, unfolded: true, children});
+          }
+        }
+
+        return result;
+      };
+
+      return root.reduce(filterChildren, []);
+    };
+
+    this.setState({keyword, filteredLinks: filterLinks(originLinks, keyword)});
+  }
+
+  renderSearchBox() {
+    const {classnames: cx, searchable, searchConfig = {}} = this.props;
+    const keyword = this.state.keyword;
+
+    return (
+      <>
+        {searchable ? (
+          <SearchBox
+            className={cx('Nav-SearchBox', searchConfig?.className)}
+            mini={searchConfig.mini ?? false}
+            enhance={searchConfig.enhance ?? false}
+            clearable={searchConfig.clearable ?? true}
+            searchImediately={searchConfig.searchImediately}
+            placeholder={searchConfig.placeholder}
+            defaultValue={''}
+            value={keyword ?? ''}
+            onSearch={this.handleSearch}
+            onChange={/** 为了消除react报错 */ noop}
+          />
+        ) : null}
+      </>
+    );
   }
 
   render(): JSX.Element {
@@ -697,9 +843,10 @@ export class Navigation extends React.Component<
       id,
       render,
       popOverContainer,
-      env
+      env,
+      searchable
     } = this.props;
-    const {dropIndicator} = this.state;
+    const {dropIndicator, filteredLinks} = this.state;
 
     let overflowedIndicator = null;
     if (overflow && isObject(overflow) && overflow.enable) {
@@ -740,77 +887,93 @@ export class Navigation extends React.Component<
       } catch (e) {}
     }
 
+    const navigations =
+      Array.isArray(filteredLinks) && filteredLinks.length > 0
+        ? filteredLinks
+        : links;
+    const menuDom = (
+      <>
+        {Array.isArray(navigations) ? (
+          <Menu
+            navigations={this.normalizeNavigations(navigations, 1)}
+            isActive={(link: NavigationItem, prefix: string = '') => {
+              if (link.link && typeof link.link.active !== 'undefined') {
+                return link.link.active;
+              }
+              const path = link.path;
+              const ret = location.pathname === path;
+
+              return !!ret;
+            }}
+            isOpen={(item: NavigationItem) => !!item.open}
+            stacked={!!stacked}
+            mode={mode}
+            themeColor={themeColor}
+            onSelect={this.handleClick}
+            onToggle={this.toggleLink}
+            onChange={this.handleChange}
+            renderLink={(link: MenuItemProps) => link.link}
+            badge={itemBadge || badge}
+            collapsed={collapsed}
+            overflowedIndicator={overflowedIndicator}
+            overflowMaxCount={overflow?.maxVisibleCount}
+            overflowedIndicatorPopupClassName={cx(
+              overflow?.overflowPopoverClassName
+            )}
+            overflowSuffix={
+              overflow?.overflowSuffix
+                ? render('nav-overflow-suffix', overflow?.overflowSuffix)
+                : null
+            }
+            overflowItemWidth={overflow?.itemWidth}
+            overflowComponent={overflow?.wrapperComponent}
+            overflowStyle={overflow?.style}
+            popupClassName={`${popupClassName || ''}${
+              classNameId ? ` ${classNameId}` : ''
+            }`}
+            expandIcon={
+              expandIcon
+                ? typeof expandIcon === 'string'
+                  ? expandIcon
+                  : render('expand-icon', expandIcon)
+                : null
+            }
+            expandBefore={expandPosition === 'after' ? false : true}
+            inlineIndent={indentSize}
+            accordion={accordion}
+            draggable={draggable}
+            data={data}
+            disabled={disabled}
+            onDragStart={this.handleDragStart}
+            popOverContainer={
+              popOverContainer
+                ? popOverContainer
+                : env && env.getModalContainer
+                ? env.getModalContainer
+                : () => document.body
+            }
+          />
+        ) : null}
+        <Spinner show={!!loading} overlay loadingConfig={loadingConfig} />
+      </>
+    );
+
     return (
       <div
         className={cx('Nav', className, {
-          ['Nav-horizontal']: !stacked
+          ['Nav-horizontal']: !stacked,
+          ['Nav--searchable']: !!searchable
         })}
         style={styleConfig}
       >
-        <>
-          {Array.isArray(links) ? (
-            <Menu
-              navigations={this.normalizeNavigations(links, 1)}
-              isActive={(link: NavigationItem, prefix: string = '') => {
-                if (link.link && typeof link.link.active !== 'undefined') {
-                  return link.link.active;
-                }
-                const path = link.path;
-                const ret = location.pathname === path;
-
-                return !!ret;
-              }}
-              isOpen={(item: NavigationItem) => !!item.open}
-              stacked={!!stacked}
-              mode={mode}
-              themeColor={themeColor}
-              onSelect={this.handleClick}
-              onToggle={this.toggleLink}
-              onChange={this.handleChange}
-              renderLink={(link: MenuItemProps) => link.link}
-              badge={itemBadge || badge}
-              collapsed={collapsed}
-              overflowedIndicator={overflowedIndicator}
-              overflowMaxCount={overflow?.maxVisibleCount}
-              overflowedIndicatorPopupClassName={cx(
-                overflow?.overflowPopoverClassName
-              )}
-              overflowSuffix={
-                overflow?.overflowSuffix
-                  ? render('nav-overflow-suffix', overflow?.overflowSuffix)
-                  : null
-              }
-              overflowItemWidth={overflow?.itemWidth}
-              overflowComponent={overflow?.wrapperComponent}
-              overflowStyle={overflow?.style}
-              popupClassName={`${popupClassName || ''}${
-                classNameId ? ` ${classNameId}` : ''
-              }`}
-              expandIcon={
-                expandIcon
-                  ? typeof expandIcon === 'string'
-                    ? expandIcon
-                    : render('expand-icon', expandIcon)
-                  : null
-              }
-              expandBefore={expandPosition === 'after' ? false : true}
-              inlineIndent={indentSize}
-              accordion={accordion}
-              draggable={draggable}
-              data={data}
-              disabled={disabled}
-              onDragStart={this.handleDragStart}
-              popOverContainer={
-                popOverContainer
-                  ? popOverContainer
-                  : env.getModalContainer
-                  ? env.getModalContainer
-                  : () => document.body
-              }
-            ></Menu>
-          ) : null}
-          <Spinner show={!!loading} overlay loadingConfig={loadingConfig} />
-        </>
+        {searchable ? (
+          <>
+            {this.renderSearchBox()}
+            {menuDom}
+          </>
+        ) : (
+          menuDom
+        )}
         {dropIndicator ? (
           <div className={cx('Nav-dropIndicator')} style={dropIndicator} />
         ) : null}
@@ -850,7 +1013,11 @@ const ConditionBuilderWithRemoteOptions = withRemoteConfig({
     if (response.value && !someTree(config, item => item.active)) {
       const {env} = props;
 
-      env.jumpTo(filter(response.value as string, props.data));
+      env.jumpTo(
+        filter(response.value as string, props.data),
+        undefined,
+        props.data
+      );
     }
   },
   normalizeConfig(
@@ -972,7 +1139,10 @@ const ConditionBuilderWithRemoteOptions = withRemoteConfig({
 
     const children = Array.isArray(ret.data)
       ? ret.data
-      : ret.data.links || ret.data.options || ret.data.items || ret.data.rows;
+      : ret.data?.links ||
+        ret.data?.options ||
+        ret.data?.items ||
+        ret.data?.rows;
 
     if (Array.isArray(children)) {
       newItem.children = children.concat();
@@ -1241,7 +1411,7 @@ const ConditionBuilderWithRemoteOptions = withRemoteConfig({
       if (!link.to) {
         return;
       }
-      env?.jumpTo(filter(link.to as string, data), link as any);
+      env?.jumpTo(filter(link.to as string, data), link as any, data);
     }
 
     render() {
@@ -1357,7 +1527,9 @@ export class NavigationRenderer extends React.Component<RendererProps> {
         );
 
         env?.jumpTo(
-          filter(child ? child.to : (children[0].to as string), data)
+          filter(child ? child.to : (children[0].to as string), data),
+          undefined,
+          data
         );
       }
     } else if (actionType === 'collapse') {

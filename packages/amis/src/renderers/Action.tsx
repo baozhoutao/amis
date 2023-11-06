@@ -9,7 +9,8 @@ import {
   Renderer,
   RendererProps,
   ScopedContext,
-  uuid
+  uuid,
+  setThemeClassName
 } from 'amis-core';
 import {filter} from 'amis-core';
 import {BadgeObject, Button, SpinnerExtraProps} from 'amis-ui';
@@ -197,6 +198,7 @@ export interface DownloadActionSchema
    * 指定为下载行为
    */
   actionType: 'download';
+  downloadFileName?: string;
 }
 
 export interface SaveAsActionSchema
@@ -361,6 +363,7 @@ export interface OtherActionSchema extends ButtonSchema {
 
 export interface VanillaAction extends ButtonSchema {
   actionType?: string;
+  downloadFileName?: string;
 }
 
 /**
@@ -425,7 +428,8 @@ const ActionProps = [
   'requireSelected',
   'countDown',
   'fileName',
-  'isolateScope'
+  'isolateScope',
+  'downloadFileName'
 ];
 import {filterContents} from './Remark';
 import {ClassNamesFn, themeable, ThemeProps} from 'amis-core';
@@ -483,93 +487,29 @@ export const createSyntheticEvent = <T extends Element, E extends Event>(
   };
 };
 
+type CommonKeys =
+  | 'type'
+  | 'className'
+  | 'iconClassName'
+  | 'rightIconClassName'
+  | 'loadingClassName';
+
 export interface ActionProps
   extends Omit<
       ButtonSchema,
       'className' | 'iconClassName' | 'rightIconClassName' | 'loadingClassName'
     >,
     ThemeProps,
-    Omit<
-      AjaxActionSchema,
-      | 'type'
-      | 'className'
-      | 'iconClassName'
-      | 'rightIconClassName'
-      | 'loadingClassName'
-    >,
-    Omit<
-      UrlActionSchema,
-      | 'type'
-      | 'className'
-      | 'iconClassName'
-      | 'rightIconClassName'
-      | 'loadingClassName'
-    >,
-    Omit<
-      LinkActionSchema,
-      | 'type'
-      | 'className'
-      | 'iconClassName'
-      | 'rightIconClassName'
-      | 'loadingClassName'
-    >,
-    Omit<
-      DialogActionSchema,
-      | 'type'
-      | 'className'
-      | 'iconClassName'
-      | 'rightIconClassName'
-      | 'loadingClassName'
-    >,
-    Omit<
-      DrawerActionSchema,
-      | 'type'
-      | 'className'
-      | 'iconClassName'
-      | 'rightIconClassName'
-      | 'loadingClassName'
-    >,
-    Omit<
-      ToastSchemaBase,
-      | 'type'
-      | 'className'
-      | 'iconClassName'
-      | 'rightIconClassName'
-      | 'loadingClassName'
-    >,
-    Omit<
-      CopyActionSchema,
-      | 'type'
-      | 'className'
-      | 'iconClassName'
-      | 'rightIconClassName'
-      | 'loadingClassName'
-    >,
-    Omit<
-      ReloadActionSchema,
-      | 'type'
-      | 'className'
-      | 'iconClassName'
-      | 'rightIconClassName'
-      | 'loadingClassName'
-    >,
-    Omit<
-      EmailActionSchema,
-      | 'type'
-      | 'className'
-      | 'iconClassName'
-      | 'rightIconClassName'
-      | 'loadingClassName'
-      | 'body'
-    >,
-    Omit<
-      OtherActionSchema,
-      | 'type'
-      | 'className'
-      | 'iconClassName'
-      | 'rightIconClassName'
-      | 'loadingClassName'
-    >,
+    Omit<AjaxActionSchema, CommonKeys>,
+    Omit<UrlActionSchema, CommonKeys>,
+    Omit<LinkActionSchema, CommonKeys>,
+    Omit<DialogActionSchema, CommonKeys>,
+    Omit<DrawerActionSchema, CommonKeys>,
+    Omit<ToastSchemaBase, CommonKeys>,
+    Omit<CopyActionSchema, CommonKeys>,
+    Omit<ReloadActionSchema, CommonKeys>,
+    Omit<EmailActionSchema, CommonKeys | 'body'>,
+    Omit<OtherActionSchema, CommonKeys>,
     SpinnerExtraProps {
   actionType: any;
   onAction?: (
@@ -687,6 +627,7 @@ export class Action extends React.Component<ActionProps, ActionState> {
       action.actionType = 'ajax';
       const api = normalizeApi((action as AjaxActionSchema).api);
       api.responseType = 'blob';
+      api.downloadFileName = action.downloadFileName;
       (action as AjaxActionSchema).api = api;
     }
 
@@ -792,6 +733,7 @@ export class Action extends React.Component<ActionProps, ActionState> {
       classPrefix: ns,
       loadingConfig,
       themeCss,
+      wrapperCustomStyle,
       css,
       id,
       env
@@ -843,7 +785,10 @@ export class Action extends React.Component<ActionProps, ActionState> {
         cx={cx}
         icon={icon}
         className="Button-icon"
-        classNameProp={iconClassName}
+        classNameProp={cx(
+          iconClassName,
+          setThemeClassName('iconClassName', id, themeCss || css)
+        )}
       />
     );
     const rightIconElement = (
@@ -851,7 +796,10 @@ export class Action extends React.Component<ActionProps, ActionState> {
         cx={cx}
         icon={rightIcon}
         className="Button-icon"
-        classNameProp={rightIconClassName}
+        classNameProp={cx(
+          rightIconClassName,
+          setThemeClassName('iconClassName', id, themeCss || css)
+        )}
       />
     );
 
@@ -859,9 +807,14 @@ export class Action extends React.Component<ActionProps, ActionState> {
       <>
         <Button
           loadingConfig={loadingConfig}
-          className={cx(className, {
-            [activeClassName || 'is-active']: isActive
-          })}
+          className={cx(
+            className,
+            setThemeClassName('wrapperCustomStyle', id, wrapperCustomStyle),
+            setThemeClassName('className', id, themeCss || css),
+            {
+              [activeClassName || 'is-active']: isActive
+            }
+          )}
           style={style}
           size={size}
           level={
@@ -898,27 +851,15 @@ export class Action extends React.Component<ActionProps, ActionState> {
             classNames: [
               {
                 key: 'className',
-                value: className,
                 weights: {
                   hover: {
                     suf: ':not(:disabled):not(.is-disabled)'
                   },
                   active: {suf: ':not(:disabled):not(.is-disabled)'}
                 }
-              }
-            ],
-            id
-          }}
-          env={env}
-        />
-        {/* button图标自定义样式 */}
-        <CustomStyle
-          config={{
-            themeCss: themeCss || css,
-            classNames: [
+              },
               {
                 key: 'iconClassName',
-                value: iconClassName,
                 weights: {
                   default: {
                     important: true
@@ -934,6 +875,7 @@ export class Action extends React.Component<ActionProps, ActionState> {
                 }
               }
             ],
+            wrapperCustomStyle,
             id
           }}
           env={env}

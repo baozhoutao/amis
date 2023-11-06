@@ -27,7 +27,7 @@
     line-height: 1;
     background: var(--Checkbox-gb);
     display: inline-block;
-    vertical-align: middle;
+    vertical-align: text-bottom;
     position: relative;
     pointer-events: all;
 
@@ -707,6 +707,14 @@
     display: inline-block;
     margin-right: 0;
     margin-bottom: 0;
+  }
+
+  .#{$ns}Checkboxes-addBtn {
+    > svg {
+      width: px2rem(14px);
+      height: px2rem(14px);
+      margin-right: var(--Checkbox-gap);
+    }
   }
 }
 

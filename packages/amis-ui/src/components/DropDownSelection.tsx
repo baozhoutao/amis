@@ -13,8 +13,7 @@ import {
   LocaleProps,
   findTree,
   filterTree,
-  noop,
-  isMobile
+  noop
 } from 'amis-core';
 import {matchSorter} from 'match-sorter';
 
@@ -69,7 +68,8 @@ class DropDownSelection extends BaseSelection<
         return !!(
           (Array.isArray(option.children) && option.children.length) ||
           !!matchSorter([option].concat(paths), text, {
-            keys: [labelField || 'label', valueField || 'value']
+            keys: [labelField || 'label', valueField || 'value'],
+            threshold: matchSorter.rankings.CONTAINS
           }).length
         );
       },
@@ -97,12 +97,13 @@ class DropDownSelection extends BaseSelection<
       valueField = 'value',
       option2value,
       loadingConfig,
-      popOverContainer
+      popOverContainer,
+      mobileUI
     } = this.props;
 
     return (
       <PopOverContainer
-        useMobileUI
+        mobileUI={mobileUI}
         popOverContainer={popOverContainer || (() => findDOMNode(this))}
         popOverRender={({onClose}) => (
           <div>
@@ -154,9 +155,9 @@ class DropDownSelection extends BaseSelection<
               onResultClick={onClick}
               placeholder={__('Condition.field_placeholder')}
               disabled={disabled}
-              useMobileUI
+              mobileUI={mobileUI}
             >
-              {!isMobile() ? (
+              {!mobileUI ? (
                 <span className={cx('DropDownSelection-caret')}>
                   <Icon icon="right-arrow-bold" className="icon" />
                 </span>

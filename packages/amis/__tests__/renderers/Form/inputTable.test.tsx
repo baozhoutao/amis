@@ -21,7 +21,6 @@ test('Renderer:input table', async () => {
         type: 'page',
         body: {
           type: 'form',
-          debug: 'true',
           data: {
             table: [
               {
@@ -68,11 +67,7 @@ test('Renderer:input table', async () => {
 });
 
 test('Renderer: input-table with default value column', async () => {
-  const onSubmitCallbackFn = jest
-    .fn()
-    .mockImplementation((values: any, actions: any) => {
-      return true;
-    });
+  const onSubmitCallbackFn = jest.fn();
   const {container, getByText} = render(
     amisRender(
       {
@@ -442,6 +437,213 @@ test('Renderer:input-table cell selects delete', async () => {
       }
     ]
   });
+  replaceReactAriaIds(container);
+  expect(container).toMatchSnapshot();
+});
+
+test('Renderer:input-table doaction:additem', async () => {
+  const onSubmit = jest.fn();
+  const {container, findByRole, findByText} = render(
+    amisRender(
+      {
+        type: 'form',
+        data: {
+          table: [{a: 2}]
+        },
+        body: [
+          {
+            label: 'addItem1',
+            type: 'button',
+            onEvent: {
+              click: {
+                actions: [
+                  {
+                    actionType: 'addItem',
+                    componentId: 'inputtable',
+                    args: {
+                      item: {
+                        a: 3
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            label: 'addItem2',
+            type: 'button',
+            onEvent: {
+              click: {
+                actions: [
+                  {
+                    actionType: 'addItem',
+                    componentId: 'inputtable',
+                    args: {
+                      index: 0,
+                      item: {
+                        a: 1
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            type: 'input-table',
+            id: 'inputtable',
+            name: 'table',
+            label: 'Table',
+            needConfirm: false,
+            columns: [
+              {
+                type: 'text',
+                name: 'a',
+                quickEdit: false
+              }
+            ]
+          },
+          {
+            type: 'submit',
+            label: 'submitBtn'
+          }
+        ]
+      },
+      {onSubmit},
+      makeEnv({})
+    )
+  );
+
+  const addItem1 = await findByText('addItem1');
+  fireEvent.click(addItem1);
+
+  const addItem2 = await findByText('addItem2');
+  fireEvent.click(addItem2);
+
+  const submitBtn = await findByText('submitBtn');
+  fireEvent.click(submitBtn);
+  await wait(200);
+
+  expect(onSubmit).toBeCalled();
+  expect(onSubmit.mock.calls[0][0]).toEqual({
+    table: [
+      {
+        a: 1
+      },
+      {
+        a: 2
+      },
+      {
+        a: 3
+      }
+    ]
+  });
+});
+
+test('Renderer:input-table init display', async () => {
+  const onSubmit = jest.fn();
+  const {container, findByRole, findByText} = render(
+    amisRender(
+      {
+        type: 'form',
+        body: [
+          {
+            type: 'input-number',
+            name: 'aaa',
+            label: '数字',
+            id: 'u:2cf54f983323',
+            keyboard: true
+          },
+          {
+            addable: false,
+            footerAddBtn: {
+              icon: 'fa fa-plus',
+              label: '新增'
+            },
+            columns: [
+              {
+                quickEdit: {
+                  name: 'name',
+                  id: 'u:0d991cdb83f7',
+                  type: 'input-text'
+                },
+                name: 'name',
+                id: 'u:c03a3961b816',
+                label: '名称'
+              },
+              {
+                quickEdit: {
+                  name: 'score',
+                  id: 'u:fdd06fcb43ea',
+                  type: 'input-number',
+                  showSteps: false
+                },
+                name: 'score',
+                id: 'u:5cf9b284569d',
+                label: '分数'
+              },
+              {
+                quickEdit: false,
+                name: 'score',
+                id: 'u:8b9930874658',
+                label: '分数(不在quickEdit里面)',
+                type: 'input-number',
+                showSteps: false
+              },
+              {
+                quickEdit: {
+                  name: 'level',
+                  id: 'u:69f5cbdadbb0',
+                  type: 'input-number',
+                  showSteps: false
+                },
+                name: 'level',
+                id: 'u:3bd7b1d50f2d',
+                label: '等级'
+              }
+            ],
+            minLength: 0,
+            strictMode: true,
+            needConfirm: false,
+            name: 'tableList',
+            id: 'u:bda697db0d7e',
+            label: '表格表单',
+            type: 'input-table'
+          }
+        ],
+        id: 'u:1affe4fb299e',
+        actions: [
+          {
+            type: 'submit',
+            label: '提交',
+            primary: true,
+            id: 'u:6cde77348a96'
+          }
+        ],
+        data: {
+          aaa: 0,
+          tableList: [
+            {
+              score: 234,
+              level: 1,
+              name: 'AAA'
+            },
+            {
+              score: 0,
+              level: 0,
+              name: 'BBB'
+            }
+          ]
+        },
+        title: '表单'
+      },
+      {onSubmit},
+      makeEnv({})
+    )
+  );
+
+  await wait(200);
   replaceReactAriaIds(container);
   expect(container).toMatchSnapshot();
 });

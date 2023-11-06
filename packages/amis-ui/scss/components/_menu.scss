@@ -189,7 +189,6 @@
   }
 
   &-item-link {
-    max-width: var(--Menu-width);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -215,18 +214,25 @@
 
   &-item-icon,
   &-item-icon-after {
+    display: inline-block;
+    zoom: 1;
+    vertical-align: middle;
+
     img,
     svg {
       width: var(--Tabs-linkFontSize);
       height: var(--Tabs-linkFontSize);
-      vertical-align: middle;
       fill: currentColor;
+    }
+
+    i,
+    img,
+    svg {
+      float: left;
     }
   }
 
   &-item-icon {
-    margin-right: var(--gap-sm);
-
     &-collapsed {
       font-size: var(--Menu-fontSize--collapsed);
       margin: 0 auto;
@@ -238,12 +244,6 @@
         margin: 0 auto;
       }
     }
-  }
-
-  // 悬浮菜单是挂在body下面的
-  &-item-icon-after {
-    margin-right: 0;
-    margin-left: var(--gap-sm);
   }
 
   &-item-label {
@@ -328,9 +328,6 @@
 
   &-vertical.#{$ns}Nav-Menu-sub {
     min-width: 160px;
-    border-radius: 2px;
-    box-shadow: 0 4px 5px 0 rgba(21, 26, 38, 0.06),
-      0 1px 10px 0 rgba(21, 26, 38, 0.05), 0 2px 4px -1px rgba(21, 26, 38, 0.04);
   }
 
   &-item,
@@ -339,9 +336,6 @@
     position: relative;
     padding: 0 px2rem(16px);
     display: block;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 
     &:active {
       @include item-active();
@@ -439,6 +433,12 @@
       background-color: var(--Layout-light-backgroundColor);
       line-height: var(--Nav-Item-height);
       cursor: pointer;
+      border-radius: 2px;
+      max-height: 400px;
+      overflow-y: auto;
+      box-shadow: 0 4px 5px 0 rgba(21, 26, 38, 0.06),
+        0 1px 10px 0 rgba(21, 26, 38, 0.05),
+        0 2px 4px -1px rgba(21, 26, 38, 0.04);
 
       // 横向收纳模式且有子菜单项的情况下 会显示2个展开箭头
       // 用css隐藏1个 自适应收纳的情况下 判断不出是子菜单项还是收纳项
@@ -448,6 +448,10 @@
             display: none;
           }
         }
+      }
+
+      .#{$ns}Nav-Menu-item-link {
+        max-width: var(--Menu-width);
       }
     }
   }

@@ -6,7 +6,8 @@ import {
   PluginActions,
   RendererPluginAction,
   tipedLabel,
-  getSchemaTpl
+  getSchemaTpl,
+  defaultValue
 } from 'amis-editor-core';
 import React from 'react';
 import {ActionConfig, ComponentInfo} from './types';
@@ -26,7 +27,10 @@ interface ActionDialogProp {
   onClose: () => void;
   getComponents: (action: RendererPluginAction) => ComponentInfo[]; // 当前页面组件树
   actionConfigInitFormatter?: (actionConfig: ActionConfig) => ActionConfig; // 动作配置初始化时格式化
-  actionConfigSubmitFormatter?: (actionConfig: ActionConfig) => ActionConfig; // 动作配置提交时格式化
+  actionConfigSubmitFormatter?: (
+    actionConfig: ActionConfig,
+    type?: string
+  ) => ActionConfig; // 动作配置提交时格式化
   render: (
     region: string,
     node: SchemaNode,
@@ -141,7 +145,8 @@ export default class ActionDialog extends React.Component<ActionDialogProp> {
           __subActions: actionNode?.actions,
           __cmptTreeSource: actionNode?.supportComponents
             ? getComponents?.(actionNode) ?? []
-            : []
+            : [],
+          ignoreError: false
         });
       }
     };
@@ -287,6 +292,44 @@ export default class ActionDialog extends React.Component<ActionDialogProp> {
                             className: 'action-panel-title',
                             visibleOn: 'data.actionType'
                           },
+                          {
+                            type: 'button-group-select',
+                            name: 'ignoreError',
+                            visibleOn: 'data.actionType',
+                            label: tipedLabel(
+                              '错误忽略',
+                              '动作发生错误时，是否忽略错误继续执行'
+                            ),
+                            mode: 'horizontal',
+                            pipeIn: (value: any, data: any) =>
+                              value === true
+                                ? '1'
+                                : value === false
+                                ? '2'
+                                : '3',
+                            pipeOut: (value: any) =>
+                              value === '1'
+                                ? true
+                                : value === '2'
+                                ? false
+                                : undefined,
+                            options: [
+                              {
+                                label: '忽略',
+                                value: '1'
+                              },
+                              {
+                                label: '不忽略',
+                                value: '2'
+                              },
+                              {
+                                label: '预设',
+                                value: '3'
+                              }
+                            ],
+                            description:
+                              '<%= data.ignoreError === false ? "找不到组件和动作执行失败都中断" : typeof data.ignoreError === "undefined" ? "找不到组件容忍，动作执行失败才中断" : ""%>'
+                          },
                           getSchemaTpl('expressionFormulaControl', {
                             name: 'stopPropagation',
                             label: tipedLabel(
@@ -320,7 +363,7 @@ export default class ActionDialog extends React.Component<ActionDialogProp> {
             style: {
               borderStyle: 'solid'
             },
-            className: 'action-config-panel'
+            className: 'action-config-panel AMISCSSWrapper'
           }
         ],
         onClose

@@ -199,6 +199,14 @@ setSchemaTpl('api', (patch: any = {}) => {
 
           {
             type: 'switch',
+            label: '静默请求',
+            name: 'silent',
+            mode: 'inline',
+            description: '是否静默发送请求，屏蔽报错提示'
+          },
+
+          {
+            type: 'switch',
             label: '是否设置缓存',
             name: 'cache',
             className: 'w-full m-b-xs',
@@ -373,23 +381,12 @@ setSchemaTpl(
           name: fieldName,
           type: 'radios',
           inline: true,
-          onChange: () => {},
+          value: false,
           // pipeIn: (value:any) => typeof value === 'boolean' ? value : '1'
           options: [
-            {
-              label: '是',
-              value: true
-            },
-
-            {
-              label: '否',
-              value: false
-            },
-
-            {
-              label: '表达式',
-              value: ''
-            }
+            {label: '是', value: true},
+            {label: '否', value: false},
+            {label: '表达式', value: ''}
           ]
         },
 
@@ -460,29 +457,38 @@ setSchemaTpl('apiControl', (patch: any = {}) => {
   };
 });
 
-setSchemaTpl('interval', (more: any = {}) => ({
-  type: 'ae-switch-more',
-  label: '定时刷新',
-  name: 'interval',
-  formType: 'extend',
-  bulk: true,
-  mode: 'normal',
-  form: {
-    body: [
-      getSchemaTpl('withUnit', {
-        label: '刷新间隔',
-        name: 'interval',
-        control: {
-          type: 'input-number',
+setSchemaTpl(
+  'interval',
+  (config?: {
+    switchMoreConfig?: any;
+    formItems?: any[];
+    intervalConfig?: any;
+  }) => ({
+    type: 'ae-switch-more',
+    label: '定时刷新',
+    name: 'interval',
+    formType: 'extend',
+    bulk: true,
+    mode: 'normal',
+    form: {
+      body: [
+        getSchemaTpl('withUnit', {
+          label: '刷新间隔',
           name: 'interval',
-          value: 1000
-        },
-        unit: '毫秒'
-      })
-    ]
-  },
-  ...more
-}));
+          control: {
+            type: 'input-number',
+            name: 'interval',
+            value: 1000
+          },
+          unit: '毫秒',
+          ...((config && config.intervalConfig) || {})
+        }),
+        ...((config && config.formItems) || [])
+      ]
+    },
+    ...((config && config.switchMoreConfig) || {})
+  })
+);
 
 setSchemaTpl('silentPolling', () =>
   getSchemaTpl('switch', {

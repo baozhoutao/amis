@@ -19,6 +19,7 @@ const fileLists = {
     'hideMark.xml',
     'highlight.xml',
     'image.xml',
+    'image-var.docx',
     'info.xml',
     'link.xml',
     'list.xml',
@@ -119,16 +120,32 @@ const data = {
   date: 'amis',
   list: [
     {
-      item1: 'item1',
-      item2: 'item2'
+      item1: 'item1.0',
+      item2: 'item2.0',
+      img: '/examples/static/image/firefox.jpg'
     },
     {
       item1: 'item1.1',
-      item2: 'item2.2'
+      item2: 'item2.1',
+      img: '/examples/static/image/ie.png'
     }
   ],
-  sum: 'sum20'
+  list2: [
+    {
+      item1: 'item2-1.0',
+      item2: 'item2-2.0',
+      img: '/examples/static/image/firefox.jpg'
+    },
+    {
+      item1: 'item2-1.1',
+      item2: 'item2-2.1',
+      img: '/examples/static/image/ie.png'
+    }
+  ],
+  sum: 'sum20',
+  aImg: '/examples/static/image/ie.png'
 };
+
 const renderOptions = {
   debug: true,
   page,
@@ -139,29 +156,7 @@ const renderOptions = {
 async function renderDocx(fileName: string) {
   const filePath = `${testDir}/${fileName}`;
   const file = await (await fetch(filePath)).arrayBuffer();
-  let word: Word;
-
-  if (filePath.endsWith('.xml')) {
-    word = new Word(file, renderOptions, new XMLPackageParser());
-  } else {
-    word = new Word(file, renderOptions);
-  }
-
-  const fileNameSplit = fileName.split('/');
-  const downloadName = fileNameSplit[fileNameSplit.length - 1].replace(
-    '.xml',
-    '.docx'
-  );
-
-  (window as any).downloadDocx = () => {
-    word.download(downloadName);
-  };
-
-  (window as any).printDocx = () => {
-    word.print();
-  };
-
-  word.render(viewerElement);
+  renderWord(file, fileName);
 }
 
 const url = new URL(location.href);
@@ -183,22 +178,40 @@ document.addEventListener(
     e.preventDefault();
     let dt = e.dataTransfer!;
     let files = dt.files;
-    renderWord(files[0]);
+    renderDropWord(files[0]);
   },
   false
 );
 
-function renderWord(file: File) {
+function renderWord(data: ArrayBuffer, fileName: string) {
+  let word: Word;
+  if (fileName.endsWith('.xml')) {
+    word = new Word(data, renderOptions, new XMLPackageParser());
+  } else {
+    word = new Word(data, renderOptions);
+  }
+  const fileNameSplit = fileName.split('/');
+  const downloadName = fileNameSplit[fileNameSplit.length - 1].replace(
+    '.xml',
+    '.docx'
+  );
+
+  (window as any).downloadDocx = () => {
+    word.download(downloadName);
+  };
+
+  (window as any).printDocx = () => {
+    word.print();
+  };
+
+  word.render(viewerElement);
+}
+
+function renderDropWord(file: File) {
   const reader = new FileReader();
   reader.onload = _e => {
     const data = reader.result as ArrayBuffer;
-    let word;
-    if (file.name.endsWith('.xml')) {
-      word = new Word(data, renderOptions, new XMLPackageParser());
-    } else {
-      word = new Word(data, renderOptions);
-    }
-    word.render(viewerElement);
+    renderWord(data, file.name);
   };
   reader.readAsArrayBuffer(file);
 }

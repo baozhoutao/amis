@@ -29,6 +29,8 @@ export interface Props extends ThemeProps, LocaleProps {
   wrapperComponent: any;
   groupId?: string; // 表头分组随机生成的id
   depth?: number; // 表头分组
+  col?: string;
+  index?: number;
   classnames: ClassNamesFn;
 }
 
@@ -52,6 +54,7 @@ export class BodyCell extends React.Component<Props> {
       style,
       groupId,
       depth,
+      col,
       wrapperComponent: Component,
       classnames: cx
     } = this.props;
@@ -68,6 +71,7 @@ export class BodyCell extends React.Component<Props> {
         style={fixed ? {position: 'sticky', zIndex, ...style} : {...style}}
         data-group-id={groupId || null}
         data-depth={depth || null}
+        data-col={col}
       >
         {children}
       </Component>

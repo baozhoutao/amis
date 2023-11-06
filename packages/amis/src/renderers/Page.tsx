@@ -1,6 +1,11 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import {Renderer, RendererProps, filterTarget} from 'amis-core';
+import {
+  Renderer,
+  RendererProps,
+  filterTarget,
+  setThemeClassName
+} from 'amis-core';
 import {observer} from 'mobx-react';
 import {ServiceStore, IServiceStore} from 'amis-core';
 import {
@@ -9,7 +14,8 @@ import {
   ActionObject,
   Location,
   ApiObject,
-  FunctionPropertyNames
+  FunctionPropertyNames,
+  CustomStyle
 } from 'amis-core';
 import {filter, evalExpression} from 'amis-core';
 import {
@@ -237,7 +243,6 @@ export default class Page extends React.Component<PageProps> {
   startX: number;
   startWidth: number;
   codeWrap: HTMLElement;
-  asideInner = React.createRef<HTMLDivElement>();
 
   static defaultProps = {
     asideClassName: '',
@@ -387,20 +392,12 @@ export default class Page extends React.Component<PageProps> {
       initFetchOn,
       store,
       messages,
-      asideSticky,
       data,
       dispatchEvent,
       env
     } = this.props;
 
     this.mounted = true;
-
-    if (asideSticky && this.asideInner.current) {
-      const dom = this.asideInner.current!;
-      dom.style.cssText += `position: sticky; top: ${
-        scrollPosition(dom).top
-      }px;`;
-    }
 
     const rendererEvent = await dispatchEvent('init', data, this);
 
@@ -516,7 +513,7 @@ export default class Page extends React.Component<PageProps> {
 
           const redirect =
             action.redirect && filter(action.redirect, store.data);
-          redirect && env.jumpTo(redirect, action);
+          redirect && env.jumpTo(redirect, action, store.data);
           action.reload &&
             this.reloadTarget(
               filterTarget(action.reload, store.data),
@@ -625,7 +622,7 @@ export default class Page extends React.Component<PageProps> {
         : target.closest('a[data-link]')?.getAttribute('data-link');
 
     if (env && link) {
-      env.jumpTo(link);
+      env.jumpTo(link, undefined, this.props.data);
       e.preventDefault();
     }
   }
@@ -790,7 +787,9 @@ export default class Page extends React.Component<PageProps> {
       env,
       classnames: cx,
       regions,
-      translate: __
+      translate: __,
+      id,
+      themeCss
     } = this.props;
 
     const subProps = {
@@ -803,9 +802,20 @@ export default class Page extends React.Component<PageProps> {
       Array.isArray(regions) ? ~regions.indexOf('header') : title || subTitle
     ) {
       header = (
-        <div className={cx(`Page-header`, headerClassName)}>
+        <div
+          className={cx(
+            `Page-header`,
+            headerClassName,
+            setThemeClassName('headerControlClassName', id, themeCss)
+          )}
+        >
           {title ? (
-            <h2 className={cx('Page-title')}>
+            <h2
+              className={cx(
+                'Page-title',
+                setThemeClassName('titleControlClassName', id, themeCss)
+              )}
+            >
               {render('title', title, subProps)}
               {remark
                 ? render('remark', {
@@ -828,7 +838,13 @@ export default class Page extends React.Component<PageProps> {
 
     if (Array.isArray(regions) ? ~regions.indexOf('toolbar') : toolbar) {
       right = (
-        <div className={cx(`Page-toolbar`, toolbarClassName)}>
+        <div
+          className={cx(
+            `Page-toolbar`,
+            toolbarClassName,
+            setThemeClassName('toolbarControlClassName', id, themeCss)
+          )}
+        >
           {render('toolbar', toolbar || '', subProps)}
         </div>
       );
@@ -862,10 +878,15 @@ export default class Page extends React.Component<PageProps> {
       style,
       data,
       asideResizor,
+      asideSticky,
       pullRefresh,
-      useMobileUI,
+      mobileUI,
       translate: __,
-      loadingConfig
+      loadingConfig,
+      id,
+      wrapperCustomStyle,
+      env,
+      themeCss
     } = this.props;
 
     const subProps = {
@@ -887,7 +908,14 @@ export default class Page extends React.Component<PageProps> {
         <div className={cx('Page-main')}>
           {this.renderHeader()}
           {/* role 用于 editor 定位 Spinner */}
-          <div className={cx(`Page-body`, bodyClassName)} role="page-body">
+          <div
+            className={cx(
+              `Page-body`,
+              bodyClassName,
+              setThemeClassName('bodyControlClassName', id, themeCss)
+            )}
+            role="page-body"
+          >
             <Spinner
               size="lg"
               overlay
@@ -916,7 +944,14 @@ export default class Page extends React.Component<PageProps> {
 
     return (
       <div
-        className={cx(`Page`, hasAside ? `Page--withSidebar` : '', className)}
+        className={cx(
+          `Page`,
+          hasAside ? `Page--withSidebar` : '',
+          hasAside && asideSticky ? `Page--asideSticky` : '',
+          className,
+          setThemeClassName('baseControlClassName', id, themeCss),
+          setThemeClassName('wrapperCustomStyle', id, wrapperCustomStyle)
+        )}
         onClick={this.handleClick}
         style={styleVar}
       >
@@ -925,20 +960,19 @@ export default class Page extends React.Component<PageProps> {
             className={cx(
               `Page-aside`,
               asideResizor ? 'relative' : 'Page-aside--withWidth',
-              asideClassName
+              asideClassName,
+              setThemeClassName('asideControlClassName', id, themeCss)
             )}
           >
-            <div className={cx(`Page-asideInner`)} ref={this.asideInner}>
-              {render('aside', aside || '', {
-                ...subProps,
-                ...(typeof aside === 'string'
-                  ? {
-                      inline: false,
-                      className: `Page-asideTplWrapper`
-                    }
-                  : null)
-              })}
-            </div>
+            {render('aside', aside || '', {
+              ...subProps,
+              ...(typeof aside === 'string'
+                ? {
+                    inline: false,
+                    className: `Page-asideTplWrapper`
+                  }
+                : null)
+            })}
             {asideResizor ? (
               <div
                 onMouseDown={this.handleResizeMouseDown}
@@ -948,7 +982,7 @@ export default class Page extends React.Component<PageProps> {
           </div>
         ) : null}
 
-        {useMobileUI && isMobile() && pullRefresh && !pullRefresh.disabled ? (
+        {mobileUI && pullRefresh && !pullRefresh.disabled ? (
           <PullRefresh
             {...pullRefresh}
             translate={__}
@@ -995,6 +1029,45 @@ export default class Page extends React.Component<PageProps> {
             onQuery: initApi ? this.handleQuery : undefined
           }
         )}
+        <CustomStyle
+          config={{
+            wrapperCustomStyle,
+            id,
+            themeCss,
+            classNames: [
+              {
+                key: 'baseControlClassName',
+                weights: {
+                  default: {
+                    important: true
+                  },
+                  hover: {
+                    important: true
+                  },
+                  active: {
+                    important: true
+                  }
+                }
+              },
+              {
+                key: 'bodyControlClassName'
+              },
+              {
+                key: 'headerControlClassName'
+              },
+              {
+                key: 'titleControlClassName'
+              },
+              {
+                key: 'toolbarControlClassName'
+              },
+              {
+                key: 'asideControlClassName'
+              }
+            ]
+          }}
+          env={env}
+        />
       </div>
     );
   }
@@ -1076,7 +1149,7 @@ export class PageRenderer extends Page {
 
     if (reload) {
       scoped.reload(reload, store.data);
-    } else if (scoped?.component?.reload) {
+    } else if (scoped?.component !== this && scoped.component?.reload) {
       scoped.component.reload();
     } else {
       // 没有设置，则自动让页面中 crud 刷新。
@@ -1103,7 +1176,7 @@ export class PageRenderer extends Page {
     setTimeout(() => {
       if (reload) {
         scoped.reload(reload, store.data);
-      } else if (scoped?.component?.reload) {
+      } else if (scoped.component !== this && scoped?.component?.reload) {
         scoped.component.reload();
       } else {
         (this.context as IScopedContext)

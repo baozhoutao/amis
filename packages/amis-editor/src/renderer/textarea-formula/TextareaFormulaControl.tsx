@@ -4,7 +4,7 @@
 
 import React, {MouseEvent} from 'react';
 import cx from 'classnames';
-import {Icon, FormItem, TooltipWrapper} from 'amis';
+import {Icon, FormItem, TooltipWrapper, Spinner} from 'amis';
 import {autobind, FormControlProps, render as renderAmis} from 'amis-core';
 import {CodeMirrorEditor, FormulaEditor} from 'amis-ui';
 import type {VariableItem, CodeMirror} from 'amis-ui';
@@ -14,6 +14,7 @@ import FormulaPicker, {CustomFormulaPickerProps} from './FormulaPicker';
 import {reaction} from 'mobx';
 import {renderFormulaValue} from '../FormulaControl';
 import {getVariables} from 'amis-editor-core';
+import {findDOMNode} from 'react-dom';
 
 export interface AdditionalMenuClickOpts {
   /**
@@ -120,6 +121,8 @@ interface TextareaFormulaControlState {
   isFullscreen: boolean; //是否全屏
 
   tooltipStyle: {[key: string]: string}; // 提示框样式
+
+  loading: boolean;
 }
 
 export class TextareaFormulaControl extends React.Component<
@@ -150,7 +153,8 @@ export class TextareaFormulaControl extends React.Component<
       formulaPickerOpen: false,
       formulaPickerValue: '',
       isFullscreen: false,
-      tooltipStyle: {}
+      tooltipStyle: {},
+      loading: false
     };
   }
 
@@ -175,13 +179,17 @@ export class TextareaFormulaControl extends React.Component<
   }
 
   async componentDidUpdate(prevProps: TextareaFormulaControlProps) {
-    if (this.state.value !== this.props.value) {
+    if (
+      this.state.value !== this.props.value &&
+      prevProps.value !== this.props.value
+    ) {
       this.setState(
         {
           value: this.props.value
         },
         this.editorAutoMark
       );
+      this.editorPlugin.setValue(this.props.value || '');
     }
   }
 
@@ -253,6 +261,7 @@ export class TextareaFormulaControl extends React.Component<
 
   @autobind
   handleOnChange(value: any) {
+    this.setState({value});
     this.props.onChange?.(value);
   }
 
@@ -283,10 +292,44 @@ export class TextareaFormulaControl extends React.Component<
   }
 
   @autobind
+  async handleFormulaEditorOpen() {
+    const {node, manager, data} = this.props;
+    const onFormulaEditorOpen = manager?.config?.onFormulaEditorOpen;
+
+    this.setState({loading: true});
+
+    try {
+      if (
+        manager &&
+        onFormulaEditorOpen &&
+        typeof onFormulaEditorOpen === 'function'
+      ) {
+        const res = await onFormulaEditorOpen(node, manager, data);
+
+        if (res !== false) {
+          const variables = await getVariables(this);
+          this.setState({variables});
+        }
+      }
+    } catch (error) {
+      console.error(
+        '[amis-editor][TextareaFormulaControl] onFormulaEditorOpen failed: ',
+        error?.stack
+      );
+    }
+
+    this.setState({loading: false});
+  }
+
+  @autobind
   async handleFormulaClick(e: React.MouseEvent, type?: string) {
     if (this.props.onOverallClick) {
       return;
     }
+
+    try {
+      await this.handleFormulaEditorOpen();
+    } catch (error) {}
 
     const variablesArr = await getVariables(this);
 
@@ -337,7 +380,8 @@ export class TextareaFormulaControl extends React.Component<
       formulaPickerValue,
       isFullscreen,
       variables,
-      tooltipStyle
+      tooltipStyle,
+      loading
     } = this.state;
 
     const FormulaPickerCmp = customFormulaPicker ?? FormulaPicker;
@@ -375,7 +419,7 @@ export class TextareaFormulaControl extends React.Component<
             editorDidMount={this.handleEditorMounted}
             onBlur={this.editorAutoMark}
           />
-          {!this.props.value && (
+          {!this.state.value && (
             <div className="ae-TextareaResultBox-placeholder">
               {placeholder}
             </div>
@@ -394,14 +438,22 @@ export class TextareaFormulaControl extends React.Component<
                 />
               </a>
             </li>
-            <li className="ae-TextareaResultBox-footer-fxIcon">
-              <a
-                data-tooltip="表达式"
-                data-position="top"
-                onClick={this.handleFormulaClick}
-              >
-                <Icon icon="input-add-fx" className="icon" />
-              </a>
+            <li
+              className={cx('ae-TextareaResultBox-footer-fxIcon', {
+                'is-loading': loading
+              })}
+            >
+              {loading ? (
+                <Spinner show icon="reload" size="sm" />
+              ) : (
+                <a
+                  data-tooltip="表达式"
+                  data-position="top"
+                  onClick={this.handleFormulaClick}
+                >
+                  <Icon icon="input-add-fx" className="icon" />
+                </a>
+              )}
             </li>
             {/* 附加底部按钮菜单项 */}
             {Array.isArray(additionalMenus) &&
@@ -441,6 +493,7 @@ export class TextareaFormulaControl extends React.Component<
         ) : null}
 
         <TooltipWrapper
+          container={() => findDOMNode(this) as HTMLElement}
           trigger="hover"
           placement="top"
           style={{fontSize: '12px'}}

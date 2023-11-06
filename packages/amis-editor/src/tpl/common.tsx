@@ -6,7 +6,6 @@ import {
   tipedLabel,
   EditorManager
 } from 'amis-editor-core';
-import type {DSField} from 'amis-editor-core';
 import type {SchemaObject} from 'amis';
 import flatten from 'lodash/flatten';
 import {InputComponentName} from '../component/InputComponentName';
@@ -16,6 +15,9 @@ import reduce from 'lodash/reduce';
 import map from 'lodash/map';
 import omit from 'lodash/omit';
 import keys from 'lodash/keys';
+import type {Schema} from 'amis';
+
+import type {DSField} from '../builder';
 
 /**
  * @deprecated 兼容当前组件的switch
@@ -79,27 +81,15 @@ setSchemaTpl('formItemName', {
   // validateOnChange: false
 });
 
-setSchemaTpl('formItemExtraName', {
-  className: 'mb-3',
-  type: 'fieldset',
-  body: [
-    getSchemaTpl('formItemName', {
-      required: true,
-      label: '额外字段',
-      name: 'extraName',
-      visibleOn: 'typeof this.extraName === "string"'
-    }),
-
-    {
-      type: 'switch',
-      label: tipedLabel('存成两个字段', '开启后将选中范围分别存成两个字段'),
-      name: 'extraName',
-      pipeIn: (value: any) => typeof value === 'string',
-      pipeOut: (value: any) => (value ? '' : undefined),
-      inputClassName: 'is-inline'
-    }
-  ]
-});
+setSchemaTpl(
+  'formItemExtraName',
+  getSchemaTpl('formItemName', {
+    required: false,
+    label: '结尾字段名',
+    name: 'extraName',
+    description: '配置了结尾字段名，该组件将开始和结尾存成两个字段'
+  })
+);
 
 setSchemaTpl(
   'formItemMode',
@@ -375,14 +365,13 @@ setSchemaTpl(
       )
       .map(item => ({
         type: 'collapse',
-        headingClassName: 'ae-formItemControl-header',
+        headingClassName: 'ae-formItemControl-header ae-Collapse-header',
         bodyClassName: 'ae-formItemControl-body',
         ...item,
         collapsed: item.collapsed ?? false,
         key: item.title,
         body: flatten(item.body)
       }));
-
     return {
       type: 'collapse-group',
       activeKey: collapseGroupBody
@@ -440,6 +429,7 @@ setSchemaTpl(
     variables?: Array<VariableItem> | Function; // 自定义变量集合
     requiredDataPropsVariables?: boolean; // 是否再从amis数据域中取变量结合， 默认 false
     variableMode?: 'tabs' | 'tree'; // 变量展现模式
+    className?: string; // 外层类名
     [key: string]: any; // 其他属性，例如包括表单项pipeIn\Out 等等
   }) => {
     const {
@@ -462,11 +452,18 @@ setSchemaTpl(
     } = config || {};
     let curRendererSchema = rendererSchema;
 
-    if (useSelectMode && curRendererSchema && curRendererSchema.options) {
-      curRendererSchema = {
-        ...curRendererSchema,
-        type: 'select'
-      };
+    if (useSelectMode && curRendererSchema) {
+      if (typeof curRendererSchema === 'function') {
+        curRendererSchema = (schema: Schema) => ({
+          ...rendererSchema(schema),
+          type: 'select'
+        });
+      } else if (curRendererSchema.options) {
+        curRendererSchema = {
+          ...curRendererSchema,
+          type: 'select'
+        };
+      }
     }
 
     return {
@@ -475,6 +472,7 @@ setSchemaTpl(
       // 上下展示，可避免 自定义渲染器 出现挤压
       mode: mode === 'vertical' ? 'vertical' : 'horizontal',
       visibleOn,
+      className: config?.className,
       body: [
         getSchemaTpl('formulaControl', {
           label: label ?? '默认值',
@@ -794,7 +792,7 @@ setSchemaTpl(
     return {
       title: '状态',
       body: [
-        getSchemaTpl('newVisible'),
+        getSchemaTpl('visible'),
         getSchemaTpl('hidden'),
         !config?.unsupportStatic && config?.isFormItem
           ? getSchemaTpl('static')
@@ -865,6 +863,7 @@ setSchemaTpl('readonly', {
 
 setSchemaTpl('visible', {
   type: 'ae-StatusControl',
+  defaultTrue: true,
   label: '可见',
   mode: 'normal',
   name: 'visible',
@@ -877,17 +876,6 @@ setSchemaTpl('static', {
   mode: 'normal',
   name: 'static',
   expressionName: 'staticOn'
-});
-
-// 新版配置面板兼容 [可见] 状态
-setSchemaTpl('newVisible', {
-  type: 'ae-StatusControl',
-  label: '可见',
-  mode: 'normal',
-  name: 'visible',
-  expressionName: 'visibleOn',
-  visibleOn:
-    'data.visible || data.visible === false || data.visibleOn !== undefined'
 });
 
 setSchemaTpl('hidden', {
@@ -1026,18 +1014,21 @@ setSchemaTpl('borderMode', {
   pipeIn: defaultValue('full')
 });
 
-setSchemaTpl('searchable', () =>
+setSchemaTpl('searchable', (schema: object = {}) =>
   getSchemaTpl('switch', {
     label: '可检索',
-    name: 'searchable'
+    name: 'searchable',
+    ...schema
   })
 );
 
-setSchemaTpl('sortable', {
-  type: 'switch',
-  label: '可排序',
-  name: 'sortable'
-});
+setSchemaTpl('sortable', (schema: object = {}) =>
+  getSchemaTpl('switch', {
+    label: '可排序',
+    name: 'sortable',
+    ...schema
+  })
+);
 
 setSchemaTpl('onlyLeaf', {
   type: 'switch',
@@ -1083,6 +1074,17 @@ setSchemaTpl('buttonLevel', {
   label: '按钮样式',
   type: 'select',
   name: 'level',
+  menuTpl: {
+    type: 'container',
+    bodyClassName: 'ae-ButtonLevel-MenuTpl',
+    body: {
+      type: 'button',
+      label: '${label}',
+
+      size: 'sm',
+      level: '${value}'
+    }
+  },
   options: [
     {
       label: '默认',
@@ -1700,4 +1702,27 @@ setSchemaTpl('anchorNavTitle', {
   label: '标题',
   type: 'input-text',
   required: true
+});
+
+/** 给 CRUD2 使用 */
+setSchemaTpl('primaryField', {
+  type: 'input-text',
+  name: 'primaryField',
+  label: tipedLabel(
+    '主键',
+    '每行记录的唯一标识符，通常用于行选择、批量操作等场景。'
+  ),
+  pipeIn: (value: any, formStore: any) => {
+    const rowSelection = formStore?.data?.rowSelection;
+
+    if (value == null || typeof value !== 'string') {
+      return rowSelection &&
+        rowSelection?.keyField &&
+        typeof rowSelection.keyField === 'string'
+        ? rowSelection?.keyField
+        : 'id';
+    }
+
+    return value;
+  }
 });

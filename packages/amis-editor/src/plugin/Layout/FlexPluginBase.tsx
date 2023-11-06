@@ -30,19 +30,39 @@ export const defaultFlexColumnSchema = (title?: string) => {
     isFixedWidth: false
   };
 };
+
+const defaultFlexPreviewSchema = (title?: string) => {
+  return {
+    type: 'tpl',
+    tpl: title,
+    wrapperComponent: '',
+    className: 'bg-light center',
+    style: {
+      display: 'block',
+      flex: '1 1 auto',
+      flexBasis: 'auto',
+      textAlign: 'center',
+      marginRight: 10
+    },
+    inline: false
+  };
+};
+
 // 默认的布局容器Schema
-const defaultFlexContainerSchema = {
+const defaultFlexContainerSchema = (
+  flexItemSchema: (title?: string) => any = defaultFlexColumnSchema
+) => ({
   type: 'flex',
-  className: '',
+  className: 'p-1',
   items: [
-    defaultFlexColumnSchema('第一列'),
-    defaultFlexColumnSchema('第二列'),
-    defaultFlexColumnSchema('第三列')
+    flexItemSchema('第一列'),
+    flexItemSchema('第二列'),
+    flexItemSchema('第三列')
   ],
   style: {
     position: 'relative'
   }
-};
+});
 
 export class FlexPluginBase extends LayoutBasePlugin {
   static id = 'FlexPluginBase';
@@ -59,10 +79,8 @@ export class FlexPluginBase extends LayoutBasePlugin {
     '布局容器 是基于 CSS Flex 实现的布局效果，它比 Grid 和 HBox 对子节点位置的可控性更强，比用 CSS 类的方式更易用';
   docLink = '/amis/zh-CN/components/flex';
   tags = ['布局容器'];
-  scaffold: any = defaultFlexContainerSchema;
-  previewSchema = {
-    ...this.scaffold
-  };
+  scaffold: any = defaultFlexContainerSchema();
+  previewSchema = defaultFlexContainerSchema(defaultFlexPreviewSchema);
 
   panelTitle = '布局容器';
 
@@ -107,7 +125,7 @@ export class FlexPluginBase extends LayoutBasePlugin {
                   getSchemaTpl('layout:flex-setting', {
                     label: '弹性布局设置',
                     direction: curRendererSchema.direction,
-                    justify: curRendererSchema.justify,
+                    justify: curRendererSchema.justify || 'center',
                     alignItems: curRendererSchema.alignItems
                   }),
 
@@ -178,10 +196,14 @@ export class FlexPluginBase extends LayoutBasePlugin {
                     visibleOn: `${!isFlexItem || isFlexColumnItem}`
                   }),
                   getSchemaTpl('layout:max-width', {
-                    visibleOn: `${!isFlexItem || isFlexColumnItem}`
+                    visibleOn: `${
+                      !isFlexItem || isFlexColumnItem
+                    } || ${isFlexItem} && data.style.flex !== '0 0 150px'`
                   }),
                   getSchemaTpl('layout:min-width', {
-                    visibleOn: `${!isFlexItem || isFlexColumnItem}`
+                    visibleOn: `${
+                      !isFlexItem || isFlexColumnItem
+                    } || ${isFlexItem} && data.style.flex !== '0 0 150px'`
                   }),
 
                   getSchemaTpl('layout:overflow-x', {
@@ -208,11 +230,7 @@ export class FlexPluginBase extends LayoutBasePlugin {
           title: '外观',
           className: 'p-none',
           body: getSchemaTpl('collapseGroup', [
-            ...getSchemaTpl('theme:common', {exclude: ['layout']}),
-            {
-              title: '自定义 CSS 类名',
-              body: [getSchemaTpl('className')]
-            }
+            ...getSchemaTpl('theme:common', {exclude: ['layout']})
           ])
         }
       ])
@@ -227,16 +245,16 @@ export class FlexPluginBase extends LayoutBasePlugin {
   ];
 
   buildEditorToolbar(
-    {id, info, schema}: BaseEventContext,
+    {id, info, schema, node}: BaseEventContext,
     toolbars: Array<BasicToolbarItem>
   ) {
-    const store = this.manager.store;
-    const parent = store.getSchemaParentById(id);
+    // const store = this.manager.store;
+    const parent = node.parent?.schema; // 或者 store.getSchemaParentById(id, true);
     const draggableContainer = this.manager.draggableContainer(id);
     const isFlexItem = this.manager?.isFlexItem(id);
     const isFlexColumnItem = this.manager?.isFlexColumnItem(id);
     const newColumnSchema = defaultFlexColumnSchema('新的一列');
-
+    const canAppendSiblings = this.manager?.canAppendSiblings();
     const toolbarsTooltips: any = {};
     toolbars.forEach(toolbar => {
       if (toolbar.tooltip) {
@@ -247,12 +265,16 @@ export class FlexPluginBase extends LayoutBasePlugin {
     if (
       parent &&
       (info.renderer?.name === 'flex' || info.renderer?.name === 'container') &&
-      !isFlexItem && // 备注：如果是列级元素就不需要显示了
       !draggableContainer &&
       !schema?.isFreeContainer
     ) {
       // 非特殊布局元素（fixed、absolute）支持前后插入追加布局元素功能icon
-      if (!toolbarsTooltips['上方插入布局容器']) {
+      // 备注：如果是列级元素不需要显示
+      if (
+        !toolbarsTooltips['上方插入布局容器'] &&
+        !isFlexItem &&
+        canAppendSiblings
+      ) {
         toolbars.push(
           {
             iconSvg: 'add-btn',
@@ -262,7 +284,7 @@ export class FlexPluginBase extends LayoutBasePlugin {
             className: 'ae-InsertBefore is-vertical',
             onClick: () =>
               this.manager.appendSiblingSchema(
-                defaultFlexContainerSchema,
+                defaultFlexContainerSchema(),
                 true,
                 true
               )
@@ -275,7 +297,7 @@ export class FlexPluginBase extends LayoutBasePlugin {
             className: 'ae-InsertAfter is-vertical',
             onClick: () =>
               this.manager.appendSiblingSchema(
-                defaultFlexContainerSchema,
+                defaultFlexContainerSchema(),
                 false,
                 true
               )
@@ -298,7 +320,13 @@ export class FlexPluginBase extends LayoutBasePlugin {
       }
     }
 
-    if (isFlexItem && !draggableContainer) {
+    if (
+      parent &&
+      (parent.type === 'flex' || parent.type === 'container') &&
+      isFlexItem &&
+      !draggableContainer &&
+      canAppendSiblings
+    ) {
       if (
         !toolbarsTooltips[`${isFlexColumnItem ? '上方' : '左侧'}插入列级容器`]
       ) {

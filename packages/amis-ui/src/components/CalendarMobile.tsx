@@ -11,11 +11,13 @@ import {themeable, ThemeProps} from 'amis-core';
 import {LocaleProps, localeable} from 'amis-core';
 import {autobind} from 'amis-core';
 import {ShortCuts} from './DatePicker';
+import type {ViewMode} from './calendar/Calendar';
 
 export interface CalendarMobileProps extends ThemeProps, LocaleProps {
   className?: string;
   timeFormat?: string;
   inputFormat?: string;
+  displayForamt?: string;
   startDate?: moment.Moment;
   endDate?: moment.Moment;
   minDate?: moment.Moment;
@@ -24,7 +26,7 @@ export interface CalendarMobileProps extends ThemeProps, LocaleProps {
   maxDuration?: moment.Duration;
   dateFormat?: string;
   embed?: boolean;
-  viewMode?: 'days' | 'months' | 'years' | 'time' | 'quarters';
+  viewMode?: ViewMode;
   close?: () => void;
   confirm?: (startDate?: any, endTime?: any) => void;
   onChange?: (data: any, callback?: () => void) => void;
@@ -571,6 +573,7 @@ export class CalendarMobile extends React.Component<
       dateFormat,
       timeFormat,
       inputFormat,
+      displayForamt,
       locale,
       viewMode = 'days',
       close,
@@ -643,7 +646,7 @@ export class CalendarMobile extends React.Component<
                 onChange={this.handleMobileChange}
                 requiredConfirm={false}
                 dateFormat={dateFormat}
-                inputFormat={inputFormat}
+                displayForamt={displayForamt || inputFormat}
                 timeFormat=""
                 isValidDate={this.checkIsValidDate}
                 viewMode={viewMode}
@@ -700,7 +703,7 @@ export class CalendarMobile extends React.Component<
           input={false}
           onClose={close}
           locale={locale}
-          useMobileUI={true}
+          mobileUI={true}
           showToolbar={false}
           viewDate={moment().set({
             hour: dateTime[0],

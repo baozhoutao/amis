@@ -6,6 +6,7 @@ import {
 } from 'amis-editor-core';
 import isNumber from 'lodash/isNumber';
 import isString from 'lodash/isString';
+import compact from 'lodash/compact';
 
 /**
  * 布局相关配置项
@@ -52,20 +53,22 @@ setSchemaTpl(
       pipeOut: config?.pipeOut,
       onChange: (value: string, oldValue: string, model: any, form: any) => {
         if (value === 'static') {
-          form.setValueByName('style.inset', undefined);
-          form.setValueByName('style.zIndex', undefined);
-          form.setValueByName('originPosition', undefined);
+          form.deleteValueByName('style.inset');
+          form.deleteValueByName('style.zIndex');
+          form.deleteValueByName('originPosition');
         } else if (value === 'fixed' || value === 'absolute') {
-          // 默认使用右下角进行相对定位
+          form.setValueByName('style.zIndex', 1); // 避免被页面其他内容元素遮挡（导致不能选中）
           form.setValueByName('style.inset', 'auto 50px 50px auto');
+          // 默认使用右下角进行相对定位
           form.setValueByName('originPosition', 'right-bottom');
         } else if (value === 'relative') {
+          form.setValueByName('style.zIndex', 1);
           form.setValueByName('style.inset', 'auto');
-          form.setValueByName('originPosition', undefined);
+          form.deleteValueByName('originPosition');
         }
         if (value !== 'sticky') {
           // 非滚动吸附定位
-          form.setValueByName('stickyStatus', undefined);
+          form.deleteValueByName('stickyStatus');
         }
       },
       options: [
@@ -232,8 +235,9 @@ setSchemaTpl(
     isFlexItem?: boolean;
     pipeIn?: (value: any, data: any) => void;
     pipeOut?: (value: any, data: any) => void;
+    flexHide?: boolean;
   }) => {
-    const configOptions = [
+    const configOptions = compact([
       {
         label: '块级(block)',
         icon: 'block-display',
@@ -249,12 +253,12 @@ setSchemaTpl(
         icon: 'inline-display',
         value: 'inline'
       },
-      {
+      !config?.flexHide && {
         label: '弹性布局(flex)',
         icon: 'flex-display',
         value: 'flex'
       }
-    ];
+    ]);
     const configSchema = {
       type: 'icon-button-group',
       label:
@@ -271,10 +275,10 @@ setSchemaTpl(
       pipeOut: config?.pipeOut,
       onChange: (value: string, oldValue: string, model: any, form: any) => {
         if (value !== 'flex' && value !== 'inline-flex') {
-          form.setValueByName('style.flexDirection', undefined);
-          form.setValueByName('style.justifyContent', undefined);
-          form.setValueByName('style.alignItems', undefined);
-          form.setValueByName('style.flexWrap', undefined);
+          form.deleteValueByName('style.flexDirection');
+          form.deleteValueByName('style.justifyContent');
+          form.deleteValueByName('style.alignItems');
+          form.deleteValueByName('style.flexWrap');
         }
       }
     };
@@ -579,34 +583,34 @@ setSchemaTpl(
         if (value === '1 1 auto') {
           // 弹性
           if (config?.isFlexColumnItem) {
-            form.setValueByName('style.overflowY', 'auto');
-            form.setValueByName('style.height', undefined);
+            // form.setValueByName('style.overflowY', 'auto');
+            form.deleteValueByName('style.height');
           } else {
-            form.setValueByName('style.overflowX', 'auto');
-            form.setValueByName('style.width', undefined);
+            // form.setValueByName('style.overflowX', 'auto');
+            form.deleteValueByName('style.width');
           }
         } else if (value === '0 0 150px') {
           // 固定
-          form.setValueByName('style.flexGrow', undefined);
+          form.deleteValueByName('style.flexGrow');
           form.setValueByName('style.flexBasis', '150px');
 
           if (config?.isFlexColumnItem) {
-            form.setValueByName('style.height', undefined);
+            form.deleteValueByName('style.height');
           } else {
-            form.setValueByName('style.width', undefined);
+            form.deleteValueByName('style.width');
           }
         } else if (value === '0 0 auto') {
           // 适配
-          form.setValueByName('style.flexGrow', undefined);
-          form.setValueByName('style.flexBasis', undefined);
-          form.setValueByName('style.overflowX', undefined);
-          form.setValueByName('style.overflowY', undefined);
-          form.setValueByName('style.overflow', undefined);
+          form.deleteValueByName('style.flexGrow');
+          form.deleteValueByName('style.flexBasis');
+          form.deleteValueByName('style.overflowX');
+          form.deleteValueByName('style.overflowY');
+          form.deleteValueByName('style.overflow');
 
           if (config?.isFlexColumnItem) {
-            form.setValueByName('style.height', undefined);
+            form.deleteValueByName('style.height');
           } else {
-            form.setValueByName('style.width', undefined);
+            form.deleteValueByName('style.width');
           }
         }
       }
@@ -717,11 +721,11 @@ setSchemaTpl(
       onChange: (value: boolean, oldValue: boolean, model: any, form: any) => {
         if (value) {
           // 固定宽度时，剔除最大宽度、最小宽度
-          form.setValueByName('style.maxWidth', undefined);
-          form.setValueByName('style.minWidth', undefined);
+          form.deleteValueByName('style.maxWidth');
+          form.deleteValueByName('style.minWidth');
         } else {
           // 非固定宽度时，剔除宽度数值
-          form.setValueByName('style.width', undefined);
+          form.deleteValueByName('style.width');
         }
         if (config?.onChange) {
           config.onChange(value);
@@ -957,11 +961,11 @@ setSchemaTpl(
       onChange: (value: boolean, oldValue: boolean, model: any, form: any) => {
         if (value) {
           // 固定高度时，剔除最大高度、最小高度
-          form.setValueByName('style.maxHeight', undefined);
-          form.setValueByName('style.minHeight', undefined);
+          form.deleteValueByName('style.maxHeight');
+          form.deleteValueByName('style.minHeight');
         } else {
           // 非固定高度时，剔除高度数值
-          form.setValueByName('style.height', undefined);
+          form.deleteValueByName('style.height');
         }
         if (config?.onChange) {
           config.onChange(value);
@@ -1197,7 +1201,7 @@ setSchemaTpl(
             } else {
               form.setValueByName('style.inset', 'auto 0px auto auto');
             }
-            form.setValueByName('style.transform', undefined);
+            form.deleteValueByName('style.transform');
           } else {
             // 靠左
             if (form.data?.sorptionPosition === 'top') {
@@ -1209,11 +1213,11 @@ setSchemaTpl(
             } else {
               form.setValueByName('style.inset', 'auto auto auto 0px');
             }
-            form.setValueByName('style.transform', undefined);
+            form.deleteValueByName('style.transform');
           }
         } else {
           // 靠左
-          form.setValueByName('style.transform', undefined);
+          form.deleteValueByName('style.transform');
         }
       }
     };
@@ -1340,8 +1344,8 @@ setSchemaTpl('layout:sticky', {
       form.setValueByName('style.zIndex', 10);
     } else {
       form.setValueByName('style.position', 'static');
-      form.setValueByName('style.inset', undefined);
-      form.setValueByName('style.zIndex', undefined);
+      form.deleteValueByName('style.inset');
+      form.deleteValueByName('style.zIndex');
     }
   }
 });

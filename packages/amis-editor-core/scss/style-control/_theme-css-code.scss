@@ -1,7 +1,17 @@
 .ThemeCssCode {
   position: relative;
   &-button {
-    width: 100%;
+    position: absolute;
+    top: 4px;
+    right: 12px;
+    z-index: 100;
+  }
+  &-icon {
+    cursor: pointer;
+    color: #5c5f66;
+    &:hover {
+      color: #151b26;
+    }
   }
   .is-group {
     overflow: auto;
@@ -68,6 +78,12 @@
       }
     }
   }
+  &-wrap {
+    border: 1px solid #e8e9eb;
+    .cxd-MonacoEditor-placeholder {
+      left: 1rem;
+    }
+  }
 }
 .editorPanel-inner {
   .Theme-FontEditor {
@@ -80,6 +96,18 @@
     .Theme-Wrapper-header-left {
       font-weight: 400;
       color: #5c5f66;
+    }
+  }
+}
+
+.cxd-ThemeCssCode-custom-editor {
+  .suggest-widget {
+    width: auto !important;
+    left: 16px !important;
+    right: 0 !important;
+
+    .monaco-sash:first-child {
+      display: none;
     }
   }
 }

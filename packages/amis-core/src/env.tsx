@@ -21,7 +21,7 @@ import type {RendererEvent} from './utils/renderer-event';
 import type {ListenerContext} from './actions/Action';
 import type {ICmptAction} from './actions/CmptAction';
 
-export interface wsObject {
+export interface WsObject {
   url: string;
   responseKey?: string;
   body?: any;
@@ -32,7 +32,7 @@ export interface RendererEnv {
   fetcher: (api: Api, data?: any, options?: object) => Promise<Payload>;
   isCancel: (val: any) => boolean;
   wsFetcher: (
-    ws: wsObject,
+    ws: WsObject,
     onMessage: (data: any) => void,
     onError: (error: any) => void
   ) => void;
@@ -73,8 +73,19 @@ export interface RendererEnv {
   copy?: (contents: string, format?: any) => void;
   getModalContainer?: () => HTMLElement;
   theme: ThemeInstance;
-  affixOffsetTop: number;
-  affixOffsetBottom: number;
+
+  /**
+   * @deprecated
+   * 请通过外层设置 `--affix-offset-top` css 变量设置
+   */
+  affixOffsetTop?: number;
+
+  /**
+   * @deprecated
+   * 请通过外层设置 `--affix-offset-bottom` css 变量设置
+   */
+  affixOffsetBottom?: number;
+
   richTextToken: string;
   loadRenderer: (
     schema: Schema,
@@ -82,7 +93,9 @@ export interface RendererEnv {
     reRender: Function
   ) => Promise<React.ElementType> | React.ElementType | JSX.Element | void;
   loadChartExtends?: () => void | Promise<void>;
+  loadTinymcePlugin?: (tinymce: any) => void | Promise<void>;
   useMobileUI?: boolean;
+  isMobile: () => boolean;
   /**
    * 过滤 html 标签，可用来添加 xss 保护逻辑
    */
@@ -118,7 +131,9 @@ export interface RendererEnv {
   /**
    * 文本替换的黑名单，因为属性太多了所以改成黑名单的 flags
    */
-  replaceTextIgnoreKeys?: String[];
+  replaceTextIgnoreKeys?:
+    | String[]
+    | ((key: string, value: any, object: any) => boolean);
 
   /**
    * 解析url参数

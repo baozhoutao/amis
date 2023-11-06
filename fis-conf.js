@@ -37,24 +37,24 @@ Resource.extend({
         const pkgNode = self.getNode(item.pkg, 'pkg');
         item.pkg = `${versionHash}-${item.pkg}`;
 
-        if (Array.isArray(item.deps) && pkgNode) {
-          item.deps = item.deps.filter(
-            dep =>
-              !pkgNode.has.find(id => {
-                const node = self.getNode(id);
-                const file = self.getFileById(id);
-                const moduleId =
-                  (node.extras && node.extras.moduleId) ||
-                  (file && file.moduleId) ||
-                  id.replace(/\.js$/i, '');
+        // if (Array.isArray(item.deps) && pkgNode) {
+        //   item.deps = item.deps.filter(
+        //     dep =>
+        //       !pkgNode.has.find(id => {
+        //         const node = self.getNode(id);
+        //         const file = self.getFileById(id);
+        //         const moduleId =
+        //           (node.extras && node.extras.moduleId) ||
+        //           (file && file.moduleId) ||
+        //           id.replace(/\.js$/i, '');
 
-                return moduleId === dep;
-              })
-          );
-          if (!item.deps.length) {
-            delete item.deps;
-          }
-        }
+        //         return moduleId === dep;
+        //       })
+        //   );
+        //   if (!item.deps.length) {
+        //     delete item.deps;
+        //   }
+        // }
       }
     });
     Object.keys(map.pkg).forEach(function (key) {
@@ -241,7 +241,7 @@ fis.match('/examples/mod.js', {
   isMod: false
 });
 
-fis.match('markdown-it/**', {
+fis.match('{markdown-it,moment-timezone}/**', {
   preprocessor: fis.plugin('js-require-file')
 });
 
@@ -253,7 +253,7 @@ fis.match('*.html:jsx', {
 
 // 这些用了 esm
 fis.match(
-  '{echarts/**.js,zrender/**.js,echarts-wordcloud/**.js,markdown-it-html5-media/**.js,react-hook-form/**.js,qrcode.react/**.js,axios/**.js}',
+  '{echarts/**.js,zrender/**.js,echarts-wordcloud/**.js,markdown-it-html5-media/**.js,react-hook-form/**.js,qrcode.react/**.js,axios/**.js,downshift/**.js,react-intersection-observer/**.js}',
   {
     parser: fis.plugin('typescript', {
       sourceMap: false,
@@ -688,6 +688,7 @@ if (fis.project.currentMedia() === 'publish-sdk') {
     postprocessor: convertSCSSIE11
   });
   const ghPages = fis.media('gh-pages');
+  ghPages.set('project.files', ['examples/index.html']);
 
   ghPages.match('*.scss', {
     parser: fis.plugin('sass', {

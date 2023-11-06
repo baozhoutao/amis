@@ -58,6 +58,11 @@ export interface FileControlSchema extends FormBaseControlSchema {
   accept?: string;
 
   /**
+   * 控制 input 标签的 capture 属性，用于移动端拍照或录像。
+   */
+  capture?: string;
+
+  /**
    * 如果上传的文件比较小可以设置此选项来简单的把文件 base64 的值给 form 一起提交，目前不支持多选。
    */
   asBase64?: boolean;
@@ -1015,9 +1020,9 @@ export default class FileControl extends React.Component<FileProps, FileState> {
 
     // Note: File类型字段放在后面，可以支持第三方云存储鉴权
     fd.append(config.fieldName || 'file', file);
-
+    api.data = fd;
     try {
-      return await this._send(file, api, fd, {}, onProgress);
+      return await this._send(file, api, {}, onProgress);
     } finally {
       this.removeFileCanelExecutor(file);
     }
@@ -1169,12 +1174,12 @@ export default class FileControl extends React.Component<FileProps, FileState> {
 
           // Note: File类型字段放在后面，可以支持第三方云存储鉴权
           fd.append(config.fieldName || 'file', blob, file.name);
+          api.data = fd;
 
           return self
             ._send(
               file,
               api,
-              fd,
               {},
               progress => updateProgress(task.partNumber, progress),
               3
@@ -1219,7 +1224,6 @@ export default class FileControl extends React.Component<FileProps, FileState> {
   async _send(
     file: FileX,
     api: ApiObject | ApiString,
-    data?: any,
     options?: object,
     onProgress?: (progress: number) => void,
     maxRetryLimit = 0
@@ -1232,7 +1236,7 @@ export default class FileControl extends React.Component<FileProps, FileState> {
     }
 
     try {
-      const result = await env.fetcher(api, data, {
+      const result = await env.fetcher(api, this.props.data, {
         method: 'post',
         ...options,
         withCredentials: true,
@@ -1256,14 +1260,7 @@ export default class FileControl extends React.Component<FileProps, FileState> {
       return result;
     } catch (error) {
       if (maxRetryLimit > 0) {
-        return this._send(
-          file,
-          api,
-          data,
-          options,
-          onProgress,
-          maxRetryLimit - 1
-        );
+        return this._send(file, api, options, onProgress, maxRetryLimit - 1);
       }
       throw error;
     }
@@ -1336,6 +1333,7 @@ export default class FileControl extends React.Component<FileProps, FileState> {
     const {
       btnLabel,
       accept,
+      capture,
       disabled,
       maxLength,
       maxSize,
@@ -1413,7 +1411,11 @@ export default class FileControl extends React.Component<FileProps, FileState> {
                 'is-active': isDragActive
               })}
             >
-              <input disabled={disabled} {...getInputProps()} />
+              <input
+                disabled={disabled}
+                {...getInputProps()}
+                capture={capture as any}
+              />
 
               {drag || isDragActive ? (
                 <div
@@ -1445,7 +1447,7 @@ export default class FileControl extends React.Component<FileProps, FileState> {
               ) : (
                 <>
                   <Button
-                    level="default"
+                    level="enhance"
                     disabled={disabled}
                     className={cx('FileControl-selectBtn', btnClassName, {
                       'is-disabled':
@@ -1469,18 +1471,15 @@ export default class FileControl extends React.Component<FileProps, FileState> {
                   </Button>
                 </>
               )}
-              {description
-                ? render('desc', description, {
-                    className: cx(
-                      'FileControl-description',
-                      descriptionClassName
-                    )
-                  })
-                : null}
             </div>
           )}
         </DropZone>
 
+        {description
+          ? render('desc', description, {
+              className: cx('FileControl-description', descriptionClassName)
+            })
+          : null}
         {maxSize && !drag ? (
           <div className={cx('FileControl-sizeTip')}>
             {__('File.sizeLimit', {maxSize: prettyBytes(maxSize, 1024)})}
@@ -1498,9 +1497,13 @@ export default class FileControl extends React.Component<FileProps, FileState> {
               return (
                 <li key={file.id}>
                   <TooltipWrapper
-                    placement="bottom"
+                    placement="top"
                     container={container || env?.getModalContainer}
-                    tooltipClassName={cx('FileControl-list-tooltip')}
+                    tooltipClassName={cx(
+                      'FileControl-list-tooltip',
+                      (file.state === 'invalid' || file.state === 'error') &&
+                        'is-invalid'
+                    )}
                     tooltip={
                       file.state === 'invalid' || file.state === 'error'
                         ? (file as FileValue).error ||
@@ -1511,7 +1514,7 @@ export default class FileControl extends React.Component<FileProps, FileState> {
                                 maxSize: prettyBytes(maxSize, 1024)
                               })
                             : '')
-                        : ''
+                        : filename
                     }
                   >
                     <div

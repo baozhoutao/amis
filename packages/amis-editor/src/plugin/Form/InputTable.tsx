@@ -15,10 +15,10 @@ import {
   repeatArray,
   mockValue,
   EditorNodeType,
-  EditorManager,
-  DSBuilderManager
+  EditorManager
 } from 'amis-editor-core';
-import {getTreeAncestors, setVariable, someTree} from 'amis-core';
+import {setVariable, someTree} from 'amis-core';
+import {DSBuilderManager} from '../../builder/DSBuilderManager';
 import {ValidatorTag} from '../../validator';
 import {
   getEventControlConfig,
@@ -679,7 +679,7 @@ export class TableControlPlugin extends BasePlugin {
             },
             label: '插入位置',
             size: 'lg',
-            placeholder: '请输入行号，为空则在头部插入'
+            placeholder: '请输入行号，为空则在尾部插入'
           },
           {
             type: 'combo',
@@ -814,11 +814,11 @@ export class TableControlPlugin extends BasePlugin {
     }
   ];
 
-  dsBuilderManager: DSBuilderManager;
+  dsManager: DSBuilderManager;
 
   constructor(manager: EditorManager) {
     super(manager);
-    this.dsBuilderManager = new DSBuilderManager('input-table', 'api');
+    this.dsManager = new DSBuilderManager(manager);
   }
 
   panelBodyCreator = (context: BaseEventContext) => {
@@ -1037,6 +1037,43 @@ export class TableControlPlugin extends BasePlugin {
       {
         title: '外观',
         body: getSchemaTpl('collapseGroup', [
+          {
+            title: '基本',
+            body: [
+              {
+                name: 'columnsTogglable',
+                label: tipedLabel(
+                  '列显示开关',
+                  '是否展示表格列的显隐控件，“自动”即列数量大于5时自动开启'
+                ),
+                type: 'button-group-select',
+                pipeIn: defaultValue('auto'),
+                size: 'sm',
+                labelAlign: 'left',
+                options: [
+                  {
+                    label: '自动',
+                    value: 'auto'
+                  },
+
+                  {
+                    label: '开启',
+                    value: true
+                  },
+
+                  {
+                    label: '关闭',
+                    value: false
+                  }
+                ]
+              },
+              getSchemaTpl('switch', {
+                name: 'affixHeader',
+                label: '是否固定表头',
+                pipeIn: defaultValue(false)
+              })
+            ]
+          },
           getSchemaTpl('style:formItem', {renderer: context.info.renderer}),
           getSchemaTpl('style:classNames', {
             schema: [
@@ -1064,12 +1101,14 @@ export class TableControlPlugin extends BasePlugin {
   filterProps(props: any) {
     const arr = resolveArrayDatasource(props);
 
+    /** 可 */
     if (!Array.isArray(arr) || !arr.length) {
       const mockedData: any = {};
 
       if (Array.isArray(props.columns)) {
         props.columns.forEach((column: any) => {
-          if (column.name) {
+          /** 可编辑状态下不写入 Mock 数据，避免误导用户 */
+          if (column.name && !props.editable) {
             setVariable(mockedData, column.name, mockValue(column));
           }
         });
@@ -1144,7 +1183,7 @@ export class TableControlPlugin extends BasePlugin {
       }
     }
 
-    const cells: any = columns.children.concat();
+    const cells: any = columns?.children.concat() || [];
     while (cells.length > 0) {
       const cell = cells.shift() as EditorNodeType;
       // cell的孩子貌似只会有一个
@@ -1197,14 +1236,11 @@ export class TableControlPlugin extends BasePlugin {
       (target.parent.isRegion && target.parent.region === 'columns')
     ) {
       scope = scopeNode.parent.parent;
-      builder = this.dsBuilderManager.resolveBuilderBySchema(
-        scope.schema,
-        'api'
-      );
+      builder = this.dsManager.getBuilderBySchema(scope.schema);
     }
 
     if (builder && scope.schema.api) {
-      return builder.getAvailableContextFileds(
+      return builder.getAvailableContextFields(
         {
           schema: scope.schema,
           sourceKey: 'api',

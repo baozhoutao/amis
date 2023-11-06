@@ -23,6 +23,7 @@ export class ContainerPlugin extends LayoutBasePlugin {
   name = '容器';
   isBaseComponent = true;
   description = '一个简单的容器，可以将多个渲染器放置在一起。';
+  docLink = '/amis/zh-CN/components/container';
   tags = ['布局容器'];
   order = -2;
   icon = 'fa fa-square-o';
@@ -34,6 +35,7 @@ export class ContainerPlugin extends LayoutBasePlugin {
       position: 'static',
       display: 'block'
     },
+    size: 'none',
     wrapperBody: false
   };
   previewSchema = {
@@ -268,10 +270,14 @@ export class ContainerPlugin extends LayoutBasePlugin {
                 visibleOn: `${!isFlexItem || isFlexColumnItem}`
               }),
               getSchemaTpl('layout:max-width', {
-                visibleOn: `${!isFlexItem || isFlexColumnItem}`
+                visibleOn: `${
+                  !isFlexItem || isFlexColumnItem
+                } || ${isFlexItem} && data.style.flex !== '0 0 150px'`
               }),
               getSchemaTpl('layout:min-width', {
-                visibleOn: `${!isFlexItem || isFlexColumnItem}`
+                visibleOn: `${
+                  !isFlexItem || isFlexColumnItem
+                } || ${isFlexItem} && data.style.flex !== '0 0 150px'`
               }),
 
               getSchemaTpl('layout:overflow-x', {
@@ -304,11 +310,7 @@ export class ContainerPlugin extends LayoutBasePlugin {
         title: '外观',
         className: 'p-none',
         body: getSchemaTpl('collapseGroup', [
-          ...getSchemaTpl('theme:common', {exclude: ['layout']}),
-          {
-            title: '自定义 CSS 类名',
-            body: [getSchemaTpl('className')]
-          }
+          ...getSchemaTpl('theme:common', {exclude: ['layout']})
         ])
       },
       {

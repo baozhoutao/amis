@@ -756,7 +756,7 @@ export default class Tabs extends React.Component<TabsProps, TabsState> {
       collapseOnExceed,
       collapseBtnLabel,
       disabled,
-      useMobileUI,
+      mobileUI,
       swipeable
     } = this.props;
 
@@ -793,7 +793,7 @@ export default class Tabs extends React.Component<TabsProps, TabsState> {
                 : tabs.length - 1
             }
             swipeable={swipeable}
-            useMobileUI={useMobileUI}
+            mobileUI={mobileUI}
             mountOnEnter={mountOnEnter}
             unmountOnExit={
               typeof tab.reload === 'boolean'
@@ -808,7 +808,7 @@ export default class Tabs extends React.Component<TabsProps, TabsState> {
               `item/${index}`,
               (tab as any)?.type ? (tab as any) : tab.tab || tab.body,
               {
-                disabled: disabled,
+                disabled: disabled || isDisabled(tab, ctx) || undefined, // 下发个 undefined，让子表单项自己判断
                 data: ctx,
                 formMode: tab.mode || subFormMode || formMode,
                 formHorizontal:
@@ -834,7 +834,7 @@ export default class Tabs extends React.Component<TabsProps, TabsState> {
                 : tabs.length - 1
             }
             swipeable={swipeable}
-            useMobileUI={useMobileUI}
+            mobileUI={mobileUI}
             mountOnEnter={mountOnEnter}
             unmountOnExit={
               typeof tab.reload === 'boolean'
@@ -853,7 +853,7 @@ export default class Tabs extends React.Component<TabsProps, TabsState> {
                   `tab/${index}`,
                   (tab as any)?.type ? (tab as any) : tab.tab || tab.body,
                   {
-                    disabled: disabled,
+                    disabled: disabled || isDisabled(tab, data) || undefined, // 下发个 undefined，让子表单项自己判断,
                     formMode: tab.mode || subFormMode || formMode,
                     formHorizontal:
                       tab.horizontal || subFormHorizontal || formHorizontal
@@ -890,7 +890,7 @@ export default class Tabs extends React.Component<TabsProps, TabsState> {
         sidePosition={sidePosition}
         collapseOnExceed={collapseOnExceed}
         collapseBtnLabel={collapseBtnLabel}
-        useMobileUI={useMobileUI}
+        mobileUI={mobileUI}
       >
         {children}
       </CTabs>
